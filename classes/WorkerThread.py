@@ -2,19 +2,16 @@
 """ Work thread """
 
 import threading
-import hashlib
 import time
-import random
-import sys
 import os
 import shutil
 import re
 import json
 
 from subprocess import Popen, PIPE, check_output
-from Registry import Registry
+from classes.Registry import Registry
 
-from libs.common import _d
+from libs.common import _d, gen_random_md5
 
 class WorkerThread(threading.Thread):
     """ Main work thread - run hc, control work, etc """
@@ -47,9 +44,9 @@ class WorkerThread(threading.Thread):
         _d("worker", "Run thread with work_task id: {0}".format(self.work_task['id']))
 
         task_is_new = not len(self.work_task['session_name'])
-        session_name = self.work_task['session_name'] if not task_is_new else self._gen_random_md5()
+        session_name = self.work_task['session_name'] if not task_is_new else gen_random_md5()
         path_stdout = self.work_task['path_stdout'] if not task_is_new else "{0}/{1}.output".format(
-            self.outs_path, self._gen_random_md5()
+            self.outs_path, gen_random_md5()
         )
         self._update_task_props(
             {
@@ -91,7 +88,7 @@ class WorkerThread(threading.Thread):
         _d("worker", "Compile commands")
 
         if not len(self.work_task['out_file']):
-            self._update_task_props({'out_file': "{0}/{1}.out".format(self.tmp_dir, self._gen_random_md5())})
+            self._update_task_props({'out_file': "{0}/{1}.out".format(self.tmp_dir, gen_random_md5())})
 
         cmd_template = [
             "{0}/{1}".format(self.path_to_hc, self.hc_bin),
@@ -183,7 +180,7 @@ class WorkerThread(threading.Thread):
                     )
 
                 _d("worker", "Compile hybride dict with cmd: ", False)
-                path_to_hybride_dict = "{0}/{1}.hybride".format(self.tmp_dir, self._gen_random_md5())
+                path_to_hybride_dict = "{0}/{1}.hybride".format(self.tmp_dir, gen_random_md5())
                 _d("worker", "'cat {0}/* > {1}'".format(tmp_dicts_dir, path_to_hybride_dict), prefix=False)
                 check_output(
                     "cat {0}/* > {1}".format(
@@ -306,11 +303,6 @@ class WorkerThread(threading.Thread):
         fh.write(content)
         fh.close()
 
-    def _md5(self, string):
-        m = hashlib.md5()
-        m.update(string.encode('UTF-8'))
-        return m.hexdigest()
-
     def _refresh_work_task(self):
         self.work_task = self._db.fetch_row(
             "SELECT * FROM task_works WHERE id = {0}".format(self.work_task['id'])
@@ -344,15 +336,12 @@ class WorkerThread(threading.Thread):
             )
         )
 
-    def _gen_random_md5(self):
-        return self._md5(str(time.time()) + str(random.randint(0, 9999999)))
-
     def _update_task_props(self, data):
         self._db.update('task_works', data, "id = {0}".format(self.work_task['id']))
         self._refresh_work_task()
 
     def _make_hashlist(self):
-        path_to_hashlist = self.tmp_dir + "/" + self._gen_random_md5()
+        path_to_hashlist = self.tmp_dir + "/" + gen_random_md5()
         fh = open(path_to_hashlist, 'w')
         res = self._db.q(
             ("SELECT IF(LENGTH(salt), CONCAT(`hash`, ':', salt), hash) as hash "

@@ -144,6 +144,7 @@ class HashlistsLoaderThread(threading.Thread):
                     self._update_hashlist_field('tmp_path', '')
                 else:
                     self._update_status("errpath")
+                    self._parsed_flag(1)
 
                 _d("hashlist_loader", "Work for hashlist {0}/{1} done".format(self.current_hashlist_id, hashlist['name']))
 
