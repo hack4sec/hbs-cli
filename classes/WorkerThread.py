@@ -17,7 +17,7 @@ from Registry import Registry
 from libs.common import _d
 
 class WorkerThread(threading.Thread):
-    """ Api for work with DB """
+    """ Main work thread - run hc, control work, etc """
     daemon = True
     work_task = None
     done = False
@@ -383,47 +383,3 @@ class WorkerThread(threading.Thread):
                     ('stop' if process_stoped else 'waitoutparse'), self.work_task['id']
                 )
             )
-
-    def _parse_outfile(self):
-        self._refresh_work_task()
-
-        if os.path.exists(self.work_task['out_file']):
-            fh = open(self.work_task['out_file'], 'r')
-            while True:
-                line = fh.readline()
-                if not line:
-                    break
-                line = line.strip()
-
-                password = line[line.rfind(":")+1:].strip().decode("hex")
-                summ = self._md5(line[:line.rfind(":")])
-
-                self._db.q(
-                    "UPDATE hashes SET password = {0}, cracked = 1 WHERE hashlist_id = {1} AND summ={2}"
-                    .format(
-                        self._db.quote(password),
-                        self.work_task['hashlist_id'],
-                        self._db.quote(summ),
-                    )
-                )
-
-                #if line.count(":") == 1:
-                #    hash, password = line.split(":")
-                #    salt = ''
-                #elif line.count(":") == 2:
-                #    hash, password, salt = line.split(":")
-                #else:
-                #    self._update_task_props({'err_output': self.work_task['err_output'] + '\n' + line})
-                #
-                #self._db.q(
-                #    ("UPDATE hashes SET password = {3}, cracked = 1"
-                #     "WHERE hashlist_id = {0} AND hash = {1} AND salt={2} AND !cracked")
-                #     .format(
-                #            self.work_task['hashlist_id'],
-                #            self._db.quote(hash),
-                #            self._db.quote(salt),
-                #            self._db.quote(password)
-                #    )
-                #)
-        else:
-            _d("worker", "Outfile {0} not exists".format(self.work_task['out_file']))
