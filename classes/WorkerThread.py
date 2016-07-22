@@ -11,7 +11,7 @@ import json
 from subprocess import Popen, PIPE, check_output
 from classes.Registry import Registry
 
-from libs.common import _d, gen_random_md5
+from libs.common import _d, md5, gen_random_md5
 
 class WorkerThread(threading.Thread):
     """ Main work thread - run hc, control work, etc """

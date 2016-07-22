@@ -1,14 +1,19 @@
 # -*- coding: utf-8 -*-
 
 """ Api for work with DB """
+import time
 
 import mysql.connector
 
+from libs.common import _d
 
 class Database(object):
     """ Api for work with DB """
 
     _db = None
+    _restart_by_deadlock_limit = 10
+    _sleep_by_deadlock_restart = 60
+
     def __init__(self, host, user, password, basename):
         self._db = mysql.connector.connect(
             host=host,
@@ -20,8 +25,22 @@ class Database(object):
 
     def q(self, sql):
         """ Usual query, return cursor """
-        curs = self._db.cursor()
-        curs.execute(sql)
+        for i in range(1, self._restart_by_deadlock_limit + 1):
+            try:
+                curs = self._db.cursor()
+                curs.execute(sql)
+            except mysql.connector.errors.DatabaseError as e:
+                if str(e).count("Lock wait timeout exceeded") or str(e).count("Deadlock found when trying to get lock"):
+                    _d("database", "Deadlock '{0}', try {1} ".format(sql, i))
+                    if i == self._restart_by_deadlock_limit:
+                        curs = self._db.cursor()
+                        curs.execute(sql)
+                    else:
+                        time.sleep(self._sleep_by_deadlock_restart)
+                        continue
+                else:
+                    raise e
+            break
         return curs
 
     def fetch_all(self, sql):

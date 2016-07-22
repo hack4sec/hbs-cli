@@ -36,7 +36,13 @@ CREATE TABLE `hashlists` (
   `id` int(10) UNSIGNED NOT NULL,
   `name` varchar(100) NOT NULL,
   `alg_id` smallint(5) UNSIGNED NOT NULL,
-  `errors` longtext NOT NULL
+  `have_salts` tinyint(1) NOT NULL DEFAULT '0',
+  `delimiter` varchar(50) NOT NULL DEFAULT ':',
+  `errors` longtext NOT NULL,
+  `parsed` tinyint(1) NOT NULL DEFAULT '0',
+  `tmp_path` varchar(1000) NOT NULL DEFAULT '',
+  `status` enum('wait','parsing','errpath','sorting','preparedb','putindb','searchfound','ready') NOT NULL,
+  `when_loaded` int(10) UNSIGNED NOT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8;
 
 CREATE TABLE `rules` (
@@ -72,7 +78,7 @@ CREATE TABLE `tasks_groups` (
 CREATE TABLE `task_works` (
   `id` bigint(20) UNSIGNED NOT NULL,
   `hashlist_id` int(10) UNSIGNED NOT NULL,
-  `status` enum('wait','work','done','go_stop','stop') NOT NULL DEFAULT 'stop',
+  `status` enum('wait','work','done','go_stop','stop','waitoutparse','outparsing') NOT NULL DEFAULT 'stop',
   `task_id` int(10) UNSIGNED NOT NULL,
   `uncracked_before` bigint(20) UNSIGNED NOT NULL,
   `uncracked_after` bigint(20) UNSIGNED NOT NULL,

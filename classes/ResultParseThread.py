@@ -8,7 +8,8 @@ import subprocess
 
 from subprocess import Popen, PIPE, check_output
 from Registry import Registry
-from libs.common import _d, file_lines_count, gen_random_md5, md5, new_db_connect
+from classes.Factory import Factory
+from libs.common import _d, file_lines_count, gen_random_md5, md5
 
 
 class ResultParseThread(threading.Thread):
@@ -17,7 +18,7 @@ class ResultParseThread(threading.Thread):
 
     def __init__(self):
         threading.Thread.__init__(self)
-        self._db = new_db_connect()
+        self._db = Factory().new_db_connect()
 
         config = Registry().get('config')
         self.tmp_dir = config['main']['tmp_dir']
@@ -68,8 +69,6 @@ class ResultParseThread(threading.Thread):
                                 self._db.quote(summ),
                             )
                         )
-
-
 
                     self._update_status('done')
 

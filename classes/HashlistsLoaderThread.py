@@ -8,7 +8,8 @@ import subprocess
 
 from subprocess import Popen, PIPE, check_output
 from classes.Registry import Registry
-from libs.common import _d, file_lines_count, gen_random_md5, md5, new_db_connect
+from classes.Factory import Factory
+from libs.common import _d, file_lines_count, gen_random_md5, md5
 from classes.Database import Database
 
 
@@ -27,7 +28,7 @@ class HashlistsLoaderThread(threading.Thread):
         self.path_to_hc = config['main']['path_to_hc']
         self.hc_bin = config['main']['hc_bin']
 
-        self._db = new_db_connect()
+        self._db = Factory().new_db_connect()
 
     def _update_status(self, status):
         self._update_hashlist_field('status', status)

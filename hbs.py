@@ -9,18 +9,18 @@ import os
 
 import configparser
 
-from classes.Database import Database
+from classes.Factory import Factory
 from classes.Registry import Registry
 from classes.WorkerThread import WorkerThread
 from classes.HashlistsLoaderThread import HashlistsLoaderThread
 from classes.ResultParseThread import ResultParseThread
-from libs.common import _d, new_db_connect
+from libs.common import _d
 
 config = configparser.ConfigParser()
 config.read(os.getcwd() + '/' + 'config.ini')
 Registry().set('config', config)
 
-db = new_db_connect()
+db = Factory().new_db_connect()
 
 if not os.path.exists(config['main']['tmp_dir']):
     print "ERROR: Tmp path {0} is not exists!".format(config['main']['tmp_dir'])
