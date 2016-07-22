@@ -14,9 +14,11 @@ import json
 from subprocess import Popen, PIPE, check_output
 from Registry import Registry
 
+from libs.common import _d
 
-class WorkerThrd(threading.Thread):
+class WorkerThread(threading.Thread):
     """ Api for work with DB """
+    daemon = True
     work_task = None
     done = False
     _db = None
@@ -40,23 +42,9 @@ class WorkerThrd(threading.Thread):
         self.path_to_hc = config['main']['path_to_hc']
         self.hc_bin = config['main']['hc_bin']
 
-    def _d(self, _str, new_line=True, prefix=True):
-        """ Debug output (with time) """
-        if prefix:
-            print "[{0}][{1}]DEBUG: {2}".format(
-                time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()),
-                self.work_task['id'],
-                _str.strip()
-            ),
-        else:
-            print _str.strip(),
-        if new_line:
-            print '\n',
-        sys.stdout.flush()
-
     def run(self):
         """ Start method of thread """
-        self._d("Run thread with work_task id: {0}".format(self.work_task['id']))
+        _d("worker", "Run thread with work_task id: {0}".format(self.work_task['id']))
 
         task_is_new = not len(self.work_task['session_name'])
         session_name = self.work_task['session_name'] if not task_is_new else self._gen_random_md5()
@@ -85,11 +73,11 @@ class WorkerThrd(threading.Thread):
         os.chdir(self.path_to_hc)
 
         task = self._db.fetch_row("SELECT * FROM tasks WHERE id = " + str(self.work_task['task_id']))
-        self._d("source task id/source: {0}/{1}/{2}".format(task['id'], task['type'], task['source']))
+        _d("worker", "Source task id/source: {0}/{1}/{2}".format(task['id'], task['type'], task['source']))
 
         self._update_task_props({'process_status': "buildhashlist"})
         path_to_hashlist = self._make_hashlist()
-        self._d("hashlist created")
+        _d("worker", "Hashlist created")
         self._update_task_props({'process_status': "compilecommand"})
 
         # Updated hash before
@@ -100,7 +88,7 @@ class WorkerThrd(threading.Thread):
             "SELECT a.alg_id FROM hashlists h, algs a WHERE h.id = {0} AND h.alg_id = a.id "
             .format(self.work_task['hashlist_id'])
         )
-        self._d("compile commands")
+        _d("worker", "Compile commands")
 
         if not len(self.work_task['out_file']):
             self._update_task_props({'out_file': "{0}/{1}.out".format(self.tmp_dir, self._gen_random_md5())})
@@ -121,7 +109,7 @@ class WorkerThrd(threading.Thread):
 
         cmd_template.append("--session={0}".format(session_name))
         if not task_is_new:
-            self._d("restore {0}".format(session_name))
+            _d("worker", "Restore {0}".format(session_name))
             cmd_template.append("--restore")
 
         if task['type'] == 'dict':
@@ -134,9 +122,9 @@ class WorkerThrd(threading.Thread):
             tmp_dicts_dir = self.tmp_dir + "/dicts_for_{0}".format(self.work_task['id'])
             if task_is_new:
                 self._update_task_props({'process_status': "preparedicts"})
-                self._d("create symlinks dicts dir {0}".format(tmp_dicts_dir))
+                _d("worker", "Create symlinks dicts dir {0}".format(tmp_dicts_dir))
                 if os.path.exists(tmp_dicts_dir):
-                    self._d("remove old symlinks dicts dir {0}".format(tmp_dicts_dir))
+                    _d("worker", "Remove old symlinks dicts dir {0}".format(tmp_dicts_dir))
                     shutil.rmtree(tmp_dicts_dir)
                 os.mkdir(tmp_dicts_dir)
 
@@ -181,10 +169,10 @@ class WorkerThrd(threading.Thread):
             tmp_dicts_dir = self.tmp_dir + "/dicts_for_{0}".format(self.work_task['id'])
             if task_is_new:
                 self._update_task_props({'process_status': "compilehybride"})
-                self._d("Gen hybride dict")
-                self._d("create symlinks dicts dir {0}".format(tmp_dicts_dir))
+                _d("worker", "Gen hybride dict")
+                _d("worker", "Create symlinks dicts dir {0}".format(tmp_dicts_dir))
                 if os.path.exists(tmp_dicts_dir):
-                    self._d("remove old symlinks dicts dir {0}".format(tmp_dicts_dir))
+                    _d("worker", "Remove old symlinks dicts dir {0}".format(tmp_dicts_dir))
                     shutil.rmtree(tmp_dicts_dir)
                 os.mkdir(tmp_dicts_dir)
 
@@ -194,9 +182,9 @@ class WorkerThrd(threading.Thread):
                         "{0}/{1}.dict".format(tmp_dicts_dir, _dict['hash'])
                     )
 
-                self._d("Compile hybride dict with cmd: ", False)
+                _d("worker", "Compile hybride dict with cmd: ", False)
                 path_to_hybride_dict = "{0}/{1}.hybride".format(self.tmp_dir, self._gen_random_md5())
-                self._d("'cat {0}/* > {1}'".format(tmp_dicts_dir, path_to_hybride_dict), prefix=False)
+                _d("worker", "'cat {0}/* > {1}'".format(tmp_dicts_dir, path_to_hybride_dict), prefix=False)
                 check_output(
                     "cat {0}/* > {1}".format(
                         tmp_dicts_dir,
@@ -229,8 +217,8 @@ class WorkerThrd(threading.Thread):
                 ]
             )
 
-        self._d("will run: ")
-        self._d(" ".join(cmd_to_run), prefix=False)
+        _d("worker", "Will run: ")
+        _d("worker", " ".join(cmd_to_run), prefix=False)
         fh_output.write(" ".join(cmd_to_run) + "\n")
 
         stime = int(time.time())
@@ -243,13 +231,13 @@ class WorkerThrd(threading.Thread):
             self._refresh_work_task()
 
             if self.work_task['status'] in ['go_stop', 'stop']:
-                self._d("stop signal ")
+                _d("worker", "Stop signal ")
                 p.stdin.write('q')
                 process_stoped = True
 
             if self._not_high_priority():
                 stop_by_priority = True
-                self._d("have most priority task: {0}".format(self._not_high_priority()))
+                _d("worker", "Have most priority task: {0}".format(self._not_high_priority()))
                 p.stdin.write('q')
                 process_stoped = True
 
@@ -280,18 +268,12 @@ class WorkerThrd(threading.Thread):
 
         fh_output.close()
 
-        self._d("Task done, start load cracked hashes")
-        self._update_task_props({'process_status': "loadhashes"})
-        self._parse_outfile()
-        self._d("Parse outfile done")
+        _d("worker", "Task done, wait load cracked hashes, worker go to next task")
 
-        self._d("Change task status")
+        _d("worker", "Change task status")
         self._change_task_status(stop_by_priority, process_stoped)
 
-        self._d("Calc hashes stat")
-        self._calc_hashes_after()
-
-        self._d("Clean file with stdout")
+        _d("worker", "Clean file with stdout")
         self._clean_stdout_file()
 
         if self.work_task['status'] == 'done' and \
@@ -300,7 +282,7 @@ class WorkerThrd(threading.Thread):
             os.remove(self.work_task['hybride_dict'])
             self._update_task_props({'hybride_dict': ''})
 
-        self._d("Done\n")
+        _d("worker", "Done\n")
         self.done = True
 
     def _clean_stdout_file(self):
@@ -392,20 +374,13 @@ class WorkerThrd(threading.Thread):
             "WHERE id = {1}".format(self.work_task['hashlist_id'], self.work_task['id'])
         )
 
-    def _calc_hashes_after(self):
-        self._db.q(
-            "UPDATE task_works SET uncracked_after = "
-            "(SELECT COUNT(id) FROM hashes WHERE hashlist_id = {0} AND !cracked) "
-            "WHERE id = {1}".format(self.work_task['hashlist_id'], self.work_task['id'])
-        )
-
     def _change_task_status(self, stop_by_priority, process_stoped):
         if stop_by_priority:
             self._db.q("UPDATE task_works SET status='wait' WHERE id = {0}".format(self.work_task['id']))
         else:
             self._db.q(
                 "UPDATE task_works SET status='{0}' WHERE id = {1}".format(
-                    ('stop' if process_stoped else 'done'), self.work_task['id']
+                    ('stop' if process_stoped else 'waitoutparse'), self.work_task['id']
                 )
             )
 
@@ -441,7 +416,7 @@ class WorkerThrd(threading.Thread):
                 #    self._update_task_props({'err_output': self.work_task['err_output'] + '\n' + line})
                 #
                 #self._db.q(
-                #    ("UPDATE hashes SET password = {3}, cracked = 1" 
+                #    ("UPDATE hashes SET password = {3}, cracked = 1"
                 #     "WHERE hashlist_id = {0} AND hash = {1} AND salt={2} AND !cracked")
                 #     .format(
                 #            self.work_task['hashlist_id'],
@@ -451,4 +426,4 @@ class WorkerThrd(threading.Thread):
                 #    )
                 #)
         else:
-            self._d("outfile {0} not exists".format(self.work_task['out_file']))
+            _d("worker", "Outfile {0} not exists".format(self.work_task['out_file']))

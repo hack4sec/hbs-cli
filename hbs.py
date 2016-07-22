@@ -11,18 +11,16 @@ import configparser
 
 from classes.Database import Database
 from classes.Registry import Registry
-from classes.WorkerThrd import WorkerThrd
+from classes.WorkerThread import WorkerThread
+from classes.HashlistsLoaderThread import HashlistsLoaderThread
+from classes.ResultParseThread import ResultParseThread
+from libs.common import _d, new_db_connect
 
 config = configparser.ConfigParser()
 config.read(os.getcwd() + '/' + 'config.ini')
 Registry().set('config', config)
 
-db = Database(
-    config['main']['mysql_host'],
-    config['main']['mysql_user'],
-    config['main']['mysql_pass'],
-    config['main']['mysql_dbname']
-)
+db = new_db_connect()
 
 if not os.path.exists(config['main']['tmp_dir']):
     print "ERROR: Tmp path {0} is not exists!".format(config['main']['tmp_dir'])
@@ -61,12 +59,24 @@ sys.stdout.flush()
 
 Registry().set('db', db)
 
+hashlists_loader_thrd = HashlistsLoaderThread()
+#hashlists_loader_thrd.daemon = True
+hashlists_loader_thrd.start()
+
+result_parse_thrd = ResultParseThread()
+#result_parse_thrd.daemon = True
+result_parse_thrd.start()
+
 work_thrd = None
 while True:
-    next_work_task = db.fetch_row("SELECT * FROM task_works WHERE status='wait' ORDER BY priority DESC LIMIT 1")
+    next_work_task = db.fetch_row(
+        "SELECT tw.* FROM task_works tw, hashlists hl "
+        "WHERE tw.hashlist_id = hl.id AND hl.parsed AND tw.status='wait' "
+        "ORDER BY tw.priority DESC LIMIT 1"
+    )
     if next_work_task:
-        work_thrd = WorkerThrd(next_work_task)
-        work_thrd.setDaemon(True)
+        work_thrd = WorkerThread(next_work_task)
+        #work_thrd.setDaemon(True)
         work_thrd.start()
 
         while not work_thrd.done:
