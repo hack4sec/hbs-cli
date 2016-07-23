@@ -9,7 +9,7 @@ import subprocess
 from subprocess import Popen, PIPE, check_output
 from classes.Registry import Registry
 from classes.Factory import Factory
-from libs.common import _d, file_lines_count, gen_random_md5, md5
+from libs.common import _d, file_lines_count, gen_random_md5, md5, update_hashlist_counts
 from classes.Database import Database
 
 
@@ -138,6 +138,7 @@ class HashlistsLoaderThread(threading.Thread):
                             )
 
 
+                    update_hashlist_counts(self._db, hashlist['id'])
 
                     self._parsed_flag(1)
                     self._update_status('ready')

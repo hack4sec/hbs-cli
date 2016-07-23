@@ -9,7 +9,7 @@ import subprocess
 from subprocess import Popen, PIPE, check_output
 from Registry import Registry
 from classes.Factory import Factory
-from libs.common import _d, file_lines_count, gen_random_md5, md5
+from libs.common import _d, file_lines_count, gen_random_md5, md5, update_hashlist_counts
 
 
 class ResultParseThread(threading.Thread):
@@ -37,6 +37,10 @@ class ResultParseThread(threading.Thread):
     def _update_work_task_field(self, field, value):
         self._db.update("task_works", {field: value}, "id = {0}".format(self.current_work_task_id))
 
+    def _update_all_hashlists_counts(self):
+        for id in self._db.fetch_col("SELECT id FROM hashlists"):
+            update_hashlist_counts(self._db, id)
+
     def run(self):
         while True:
             self.current_work_task_id = self._db.fetch_one(
@@ -61,7 +65,7 @@ class ResultParseThread(threading.Thread):
 
                         self._db.q(
                             "UPDATE `hashes` h, hashlists hl "
-                            "SET `password` = {0}, cracked = 1 "
+                            "SET h.`password` = {0}, h.cracked = 1 "
                             "WHERE h.hashlist_id = hl.id AND hl.alg_id = {1} AND h.summ = {2} AND !h.cracked"
                             .format(
                                 self._db.quote(password),
@@ -80,6 +84,8 @@ class ResultParseThread(threading.Thread):
                         "(SELECT COUNT(id) FROM hashes WHERE hashlist_id = {0} AND !cracked) "
                         "WHERE id = {1}".format(work_task['hashlist_id'], work_task['id'])
                     )
+
+                    self._update_all_hashlists_counts()
                 else:
                     _d("result_parser", "Outfile {0} not exists".format(work_task['out_file']))
 

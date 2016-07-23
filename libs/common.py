@@ -49,3 +49,9 @@ def file_get_contents(path_to_file):
     content = fh.read()
     fh.close()
     return content
+
+def update_hashlist_counts(db, id):
+    cracked = db.fetch_one("SELECT COUNT(id) FROM hashes WHERE hashlist_id = {0} AND cracked".format(id))
+    uncracked = db.fetch_one("SELECT COUNT(id) FROM hashes WHERE hashlist_id = {0} AND !cracked".format(id))
+    db.update("hashlists", {'cracked': cracked, 'uncracked': uncracked}, "id = {0}".format(id))
+

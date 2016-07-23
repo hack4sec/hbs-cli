@@ -37,7 +37,9 @@ CREATE TABLE `hashlists` (
   `name` varchar(100) NOT NULL,
   `alg_id` smallint(5) UNSIGNED NOT NULL,
   `have_salts` tinyint(1) NOT NULL DEFAULT '0',
-  `delimiter` varchar(50) NOT NULL DEFAULT ':',
+  `delimiter` varchar(50) DEFAULT ':',
+  `cracked` bigint(20) UNSIGNED NOT NULL DEFAULT '0',
+  `uncracked` bigint(20) UNSIGNED NOT NULL DEFAULT '0',
   `errors` longtext NOT NULL,
   `parsed` tinyint(1) NOT NULL DEFAULT '0',
   `tmp_path` varchar(1000) NOT NULL DEFAULT '',
@@ -96,7 +98,8 @@ CREATE TABLE `task_works` (
   `path_stdout` varchar(2000) NOT NULL DEFAULT '',
   `process_status` enum('starting','work','compilehybride','compilecommand','loadhashes','buildhashlist','preparedicts') DEFAULT NULL,
   `stderr` text NOT NULL,
-  `work_time` int(10) UNSIGNED NOT NULL DEFAULT '0'
+  `work_time` int(10) UNSIGNED NOT NULL DEFAULT '0',
+  `hide` tinyint(1) NOT NULL DEFAULT '0'
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8;
 
 ALTER TABLE `algs`
