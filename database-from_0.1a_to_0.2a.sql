@@ -7,3 +7,10 @@ ALTER TABLE `task_works` ADD `hide` BOOLEAN NOT NULL DEFAULT FALSE AFTER `work_t
 ALTER TABLE `hashlists` ADD `cracked` BIGINT UNSIGNED NOT NULL DEFAULT '0' AFTER `alg_id`, ADD `uncracked` BIGINT UNSIGNED NOT NULL DEFAULT '0' AFTER `cracked`;
 ALTER TABLE `hashlists` ADD `have_salts` BOOLEAN NOT NULL DEFAULT FALSE AFTER `alg_id`;
 ALTER TABLE `hashlists` ADD `delimiter` VARCHAR(50) NULL DEFAULT ':' AFTER `have_salts`;
+UPDATE `hashlists` SET parsed=1, status='ready';
+UPDATE `hashlists` hl, (SELECT COUNT(id) as cnt, hashlist_id FROM hashes WHERE cracked GROUP BY hashlist_id) h
+SET hl.cracked = h.cnt
+WHERE hl.id = h.hashlist_id;
+UPDATE `hashlists` hl, (SELECT COUNT(id) as cnt, hashlist_id FROM hashes WHERE !cracked GROUP BY hashlist_id) h
+SET hl.uncracked = h.cnt
+WHERE hl.id = h.hashlist_id;
