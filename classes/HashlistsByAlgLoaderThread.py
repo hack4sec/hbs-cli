@@ -51,7 +51,7 @@ class HashlistsByAlgLoaderThread(threading.Thread):
         while True:
             hashes_by_algs_count = self._db.fetch_pairs(
                 "SELECT hl.alg_id, COUNT(DISTINCT h.hash) FROM `hashes` h, hashlists hl "
-                "WHERE h.hashlist_id = hl.id AND hl.common_by_alg = 0 GROUP BY hl.alg_id"
+                "WHERE h.hashlist_id = hl.id AND !h.cracked AND hl.common_by_alg = 0 GROUP BY hl.alg_id"
             )
 
             for alg_id in hashes_by_algs_count:
@@ -90,10 +90,10 @@ class HashlistsByAlgLoaderThread(threading.Thread):
 
                     curs = self._db.q(
                         "SELECT CONCAT(h.hash, 'UNIQUEDELIMITER', h.salt) as hash FROM hashes h, hashlists hl "
-                        "WHERE hl.id = h.hashlist_id AND hl.alg_id = {0} AND !h.cracked".format(alg_id)
+                        "WHERE hl.id = h.hashlist_id AND hl.alg_id = {0} AND hl.common_by_alg = 0 AND !h.cracked".format(alg_id)
                         if alg_have_salts else
                         "SELECT h.hash FROM hashes h, hashlists hl "
-                        "WHERE hl.id = h.hashlist_id AND hl.alg_id = {0} AND !h.cracked".format(alg_id)
+                        "WHERE hl.id = h.hashlist_id AND hl.alg_id = {0} AND hl.common_by_alg = 0 AND !h.cracked".format(alg_id)
                     )
 
                     _d("hashlist_common_loader", "Put data in file for #{0}".format(hashlist_id))
