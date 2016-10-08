@@ -6,7 +6,7 @@ Docs RU: http://hack4sec.pro/wiki/index.php/Hash_Brute_Station
 License: MIT
 Copyright (c) Anton Kuzmin <http://anton-kuzmin.ru> (ru) <http://anton-kuzmin.pro> (en)
 
-Work thread
+Thread for load hashlists
 """
 
 import threading
@@ -24,6 +24,7 @@ from classes.Database import Database
 class HashlistsLoaderThread(threading.Thread):
     current_hashlist_id = None
     daemon = True
+    _sleep_time = 60
 
     def __init__(self):
         threading.Thread.__init__(self)
@@ -160,7 +161,7 @@ class HashlistsLoaderThread(threading.Thread):
 
 
             self.current_hashlist_id = None
-            time.sleep(60)
+            time.sleep(self._sleep_time)
         pass
 
 
