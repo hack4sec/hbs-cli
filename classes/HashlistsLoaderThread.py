@@ -141,7 +141,7 @@ class HashlistsLoaderThread(threading.Thread):
                                 "hashes",
                                 {
                                     'cracked': '1',
-                                    'password': similar_hash['password']
+                                    'password': similar_hash['password'].encode('utf8')
                                 },
                                 "id = " + str(hash_id)
                             )
