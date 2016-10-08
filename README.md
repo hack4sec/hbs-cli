@@ -11,5 +11,5 @@ Docs en [http://hack4sec.pro/wiki/index.php/Hash_Brute_Station_en](http://hack4s
 Docs ru [http://hack4sec.pro/wiki/index.php/Hash_Brute_Station](http://hack4sec.pro/wiki/index.php/Hash_Brute_Station)
 
 # Authors
-Anton Kuzmin (anton.kuzmin.russia@gmail.com) [http://anton-kuzmin.ru](http://anton-kuzmin.ru) (ru) [http://kuzya.pro](http://kuzya.pro) (en)
+Anton Kuzmin (anton.kuzmin.russia@gmail.com) [http://anton-kuzmin.ru](http://anton-kuzmin.ru) (ru) [http://anton-kuzmin.pro](http://anton-kuzmin.pro) (en)
 
