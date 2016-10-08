@@ -34,7 +34,7 @@ class Database(object):
         """ Usual query, return cursor """
         for i in range(1, self._restart_by_deadlock_limit + 1):
             try:
-                curs = self._db.cursor()
+                curs = self._db.cursor(buffered=True)
                 curs.execute(sql)
             except mysql.connector.errors.DatabaseError as e:
                 if str(e).count("Lock wait timeout exceeded") or str(e).count("Deadlock found when trying to get lock"):
