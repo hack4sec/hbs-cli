@@ -22,6 +22,7 @@ from classes.Registry import Registry
 from classes.WorkerThread import WorkerThread
 from classes.HashlistsLoaderThread import HashlistsLoaderThread
 from classes.ResultParseThread import ResultParseThread
+from classes.HashlistsByAlgLoaderThread import HashlistsByAlgLoaderThread
 from libs.common import _d
 
 config = configparser.ConfigParser()
@@ -74,6 +75,10 @@ hashlists_loader_thrd.start()
 result_parse_thrd = ResultParseThread()
 #result_parse_thrd.daemon = True
 result_parse_thrd.start()
+
+hashlists_by_alg_loader_thrd = HashlistsByAlgLoaderThread()
+#hashlists_by_alg_loader_thrd.daemon = True
+hashlists_by_alg_loader_thrd.start()
 
 work_thrd = None
 while True:

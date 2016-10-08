@@ -14,3 +14,5 @@ WHERE hl.id = h.hashlist_id;
 UPDATE `hashlists` hl, (SELECT COUNT(id) as cnt, hashlist_id FROM hashes WHERE !cracked GROUP BY hashlist_id) h
 SET hl.uncracked = h.cnt
 WHERE hl.id = h.hashlist_id;
+ALTER TABLE `hashlists` ADD `common_by_alg` BOOLEAN NOT NULL DEFAULT FALSE AFTER `when_loaded`;
+

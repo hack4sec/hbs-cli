@@ -1,5 +1,6 @@
 dev
 
+Commom hashlists building by algs
 Single thread for hashlists load in DB
 Search already found hashes which exists in new hashlist
 Single thread for work result parse (outfile)
