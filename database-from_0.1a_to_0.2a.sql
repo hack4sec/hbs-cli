@@ -15,4 +15,4 @@ UPDATE `hashlists` hl, (SELECT COUNT(id) as cnt, hashlist_id FROM hashes WHERE !
 SET hl.uncracked = h.cnt
 WHERE hl.id = h.hashlist_id;
 ALTER TABLE `hashlists` ADD `common_by_alg` BOOLEAN NOT NULL DEFAULT FALSE AFTER `when_loaded`;
-
+UPDATE `algs` SET `name` = 'md5(md5($pass))' WHERE `name`='md5(md5($pass)';
