@@ -121,7 +121,7 @@ class HashlistsByAlgLoaderThread(threading.Thread):
                         self._db.update(
                             "hashlists",
                             {
-                                'parsed': 0,
+                                'parsed': '0',
                                 'status': 'wait',
                                 'tmp_path': tmp_path
                             },
