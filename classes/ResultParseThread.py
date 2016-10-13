@@ -84,8 +84,8 @@ class ResultParseThread(threading.Thread):
 
                     self._update_status('done')
 
-                    os.remove(work_task['out_file'])
-                    self._update_work_task_field('out_file', '')
+                    #os.remove(work_task['out_file'])
+                    #self._update_work_task_field('out_file', '')
 
                     self._db.q(
                         "UPDATE task_works SET uncracked_after = "
