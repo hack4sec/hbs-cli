@@ -16,3 +16,4 @@ v0.2a:
  Hashcat results parsing moved to single thread. This allow start new work task immediately after current work task done
  Search found hashes in other hashlists in system with same alg
  Script cron.py renamed on hbs.py
+ Hashes load in database by LOAD DATA LOCAL INFILE construction
