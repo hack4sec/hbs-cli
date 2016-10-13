@@ -1,0 +1,18 @@
+v0.2a:
+ Out-files not remove from HDD and DB after parsing
+ Fixed UTF8 passwords bug in already founded hashes procedure
+ Forbidden hashlists delete which in work now
+ Fixed dict delete bug (file was not deleted with dict db record)
+ Fixed bug of 0 priority when user cancel priority set dialog
+ Possibility set negative priority to work task
+ Statistics of hashes grouped by algs
+ Hide done task possibiliry (web-interface)
+ User can select status of work task when create it (no always stopped after create)
+ Fixed \r bug in hashlists
+ Common hashlists (internal) building by algs
+ Hashlist load process moved to single thread (search duplicates, put in db, etc)
+ Hashlists get 'status' field. Work task by it may be created after hashlist parsed and has ready to work status.
+ When new hashlist loading, hashes of it search in already exists hashlists for early found passwords
+ Hashcat results parsing moved to single thread. This allow start new work task immediately after current work task done
+ Search found hashes in other hashlists in system with same alg
+ Script cron.py renamed on hbs.py
