@@ -96,6 +96,10 @@ class HashlistsByAlgLoaderThread(threading.Thread):
                         "WHERE hl.id = h.hashlist_id AND hl.alg_id = {0} AND hl.common_by_alg = 0 AND !h.cracked".format(alg_id)
                     )
 
+                    _d("hashlist_common_loader", "Delete old hashes of #{0}".format(hashlist_id))
+                    self._db.q("DELETE FROM hashes WHERE hashlist_id = {0}".format(hashlist_id))
+                    self._db.q("UPDATE hashlists SET cracked=0, uncracked=0 WHERE id = {0}".format(hashlist_id))
+
                     _d("hashlist_common_loader", "Put data in file for #{0}".format(hashlist_id))
                     tmp_path = self.tmp_dir + "/" + gen_random_md5()
                     for row in curs:
