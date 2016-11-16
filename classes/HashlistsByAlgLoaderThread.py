@@ -50,7 +50,7 @@ class HashlistsByAlgLoaderThread(threading.Thread):
     def run(self):
         while True:
             hashes_by_algs_count = self._db.fetch_pairs(
-                "SELECT hl.alg_id, COUNT(DISTINCT h.hash) FROM `hashes` h, hashlists hl "
+                "SELECT hl.alg_id, COUNT(DISTINCT h.summ) FROM `hashes` h, hashlists hl "
                 "WHERE h.hashlist_id = hl.id AND !h.cracked AND hl.common_by_alg = 0 GROUP BY hl.alg_id"
             )
 
