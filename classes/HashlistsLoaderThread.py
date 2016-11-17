@@ -85,7 +85,7 @@ class HashlistsLoaderThread(threading.Thread):
                         if int(hashlist['have_salts']):
                             if _line.count(hashlist['delimiter']):
                                 hash = _line[:_line.index(hashlist['delimiter'])]
-                                salt = _line[_line.index(hashlist['delimiter'])+1:]
+                                salt = _line[_line.index(hashlist['delimiter'])+len(hashlist['delimiter']):]
                             else:
                                 errors_lines += _line + "\n"
                         else:
