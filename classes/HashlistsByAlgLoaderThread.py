@@ -44,6 +44,13 @@ class HashlistsByAlgLoaderThread(threading.Thread):
     def _get_hashlist_status(self, hashlist_id):
         return self._db.fetch_one("SELECT status FROM hashlists WHERE id = {0}".format(hashlist_id))
 
+    def _is_alg_in_parse(self, alg_id):
+        return self._db.fetch_one(
+            "SELECT t.id FROM `task_works` t, `hashlists` hl "
+            "WHERE t.hashlist_id = hl.id AND hl.alg_id = {0} "
+            "AND t.status IN('waitoutparse','outparsing')".format(alg_id)
+        )
+
     def _hashes_count_in_hashlist(self, hashlist_id):
         return self._db.fetch_one("SELECT COUNT(id) FROM hashes WHERE hashlist_id = {0}".format(hashlist_id))
 
@@ -85,6 +92,14 @@ class HashlistsByAlgLoaderThread(threading.Thread):
                             )
                             continue
 
+                        if self._is_alg_in_parse(alg_id):
+                            _d(
+                                "hashlist_common_loader",
+                                "Skip alg, it parsing or wait parse #{0}".format(
+                                    alg_id
+                                )
+                            )
+                            continue;
                         # Mark as 'parsing' for HashlistsLoader don`t get it to work before we done
                         self._db.update("hashlists", {'parsed': 0, 'status': 'parsing'}, "id = {0}".format(hashlist_id))
 

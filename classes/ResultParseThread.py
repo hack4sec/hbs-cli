@@ -95,6 +95,7 @@ class ResultParseThread(threading.Thread):
 
                     self._update_all_hashlists_counts()
                 else:
+                    self._update_status('done')
                     _d("result_parser", "Outfile {0} not exists".format(work_task['out_file']))
 
                 _d("result_parser", "Work for task #{0} done".format(self.current_work_task_id))

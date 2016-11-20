@@ -2,6 +2,8 @@ v0.3a dev:
  Fixed commons hashlists (by alg_id) bug then HBS try delete hashes of not exists hashlist
  Fixed commons hashlists (by alg_id) bug then count of hashes getted by hashes, not summs
  Fixed commons hashlists (by alg_id) bug then salt lists loading with errors
+ Сommon hashlists (by alg_id) not building if results of brute of this alg now parsing
+ Fixed results parser bug with wrong work task status then it have no results
 v0.2a:
  Out-files not remove from HDD and DB after parsing
  Fixed UTF8 passwords bug in already founded hashes procedure
