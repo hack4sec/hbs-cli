@@ -1,4 +1,5 @@
 v0.3a dev:
+ Work task will not start if other work tasks with same alg parsing outfile or wait outfile parse.
  Fixed commons hashlists (by alg_id) bug then HBS try delete hashes of not exists hashlist
  Fixed commons hashlists (by alg_id) bug then count of hashes getted by hashes, not summs
  Fixed commons hashlists (by alg_id) bug then salt lists loading with errors

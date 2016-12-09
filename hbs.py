@@ -85,6 +85,10 @@ while True:
     next_work_task = db.fetch_row(
         "SELECT tw.* FROM task_works tw, hashlists hl "
         "WHERE tw.hashlist_id = hl.id AND hl.parsed AND tw.status='wait' "
+        "AND hl.alg_id NOT IN( "
+        " SELECT hl.alg_id FROM `task_works` tw, hashlists hl, algs a "
+        " WHERE tw.hashlist_id = hl.id AND hl.alg_id = a.id AND tw.status IN('waitoutparse', 'outparsing') "
+        ") "
         "ORDER BY tw.priority DESC LIMIT 1"
     )
     if next_work_task:
