@@ -3,6 +3,7 @@ v0.3a dev:
  Fixed commons hashlists (by alg_id) bug then HBS try delete hashes of not exists hashlist
  Fixed commons hashlists (by alg_id) bug then count of hashes getted by hashes, not summs
  Fixed commons hashlists (by alg_id) bug then salt lists loading with errors
+ Fixed priority bug, when task with low priority can`t go to work while more priority task in outfile parsing process
  Сommon hashlists (by alg_id) not building if results of brute of this alg now parsing
  Fixed results parser bug with wrong work task status then it have no results
 v0.2a:

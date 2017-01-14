@@ -318,9 +318,13 @@ class WorkerThread(threading.Thread):
 
     def _not_high_priority(self):
         return self._db.fetch_one(
-            ("SELECT id FROM task_works "
-             "WHERE priority > {0} AND status='wait' AND id != {1} "
-             "ORDER BY priority DESC LIMIT 1")
+            ("SELECT tw.id FROM task_works tw, hashlists hl "
+             "WHERE tw.hashlist_id = hl.id  AND tw.priority > {0} AND tw.status='wait' AND tw.id != {1} "
+             "AND hl.alg_id NOT IN( "
+             "  SELECT hl.alg_id FROM `task_works` tw, hashlists hl, algs a "
+             "  WHERE tw.hashlist_id = hl.id AND hl.alg_id = a.id AND tw.status IN('waitoutparse', 'outparsing')"
+             ")"
+             "ORDER BY tw.priority DESC LIMIT 1")
             .format(
                 self.work_task['priority'],
                 self.work_task['id']
