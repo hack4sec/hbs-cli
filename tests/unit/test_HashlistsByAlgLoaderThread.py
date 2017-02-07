@@ -14,26 +14,25 @@ from classes.Registry import Registry
 from classes.Database import Database
 from classes.HashlistsByAlgLoaderThread import HashlistsByAlgLoaderThread
 
-CURPATH = os.path.dirname(__file__) + "/"
-
-config = configparser.ConfigParser()
-config.read(CURPATH + 'config.ini')
-Registry().set('config', config)
-
-db = Database(
-    config['main']['mysql_host'],
-    config['main']['mysql_user'],
-    config['main']['mysql_pass'],
-    config['main']['mysql_dbname'],
-)
-Registry().set('db', db)
-
-
 class Test_HashlistsLoaderThread:
     db = None
     thrd = None
 
     def setup_class(self):
+        CURPATH = os.path.dirname(__file__) + "/"
+
+        config = configparser.ConfigParser()
+        config.read(CURPATH + 'config.ini')
+        Registry().set('config', config)
+
+        db = Database(
+            config['main']['mysql_host'],
+            config['main']['mysql_user'],
+            config['main']['mysql_pass'],
+            config['main']['mysql_dbname'],
+        )
+        Registry().set('db', db)
+
         self.db = Registry().get('db')  # type: Database
 
     def setup(self):
