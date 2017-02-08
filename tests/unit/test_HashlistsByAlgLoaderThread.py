@@ -13,27 +13,11 @@ from libs.common import _d, file_get_contents, file_put_contents, md5
 from classes.Registry import Registry
 from classes.Database import Database
 from classes.HashlistsByAlgLoaderThread import HashlistsByAlgLoaderThread
+from CommonUnit import CommonUnit
 
-class Test_HashlistsLoaderThread:
+class Test_HashlistsLoaderThread(CommonUnit):
     db = None
     thrd = None
-
-    def setup_class(self):
-        CURPATH = os.path.dirname(__file__) + "/"
-
-        config = configparser.ConfigParser()
-        config.read(CURPATH + 'config.ini')
-        Registry().set('config', config)
-
-        db = Database(
-            config['main']['mysql_host'],
-            config['main']['mysql_user'],
-            config['main']['mysql_pass'],
-            config['main']['mysql_dbname'],
-        )
-        Registry().set('db', db)
-
-        self.db = Registry().get('db')  # type: Database
 
     def setup(self):
         self._clean_db()
@@ -43,49 +27,6 @@ class Test_HashlistsLoaderThread:
         if isinstance(self.thrd, HashlistsByAlgLoaderThread):
             del self.thrd
         self._clean_db()
-
-    def _clean_db(self):
-        self.db.q("TRUNCATE TABLE dicts")
-        self.db.q("TRUNCATE TABLE dicts_groups")
-        self.db.q("TRUNCATE TABLE hashes")
-        self.db.q("TRUNCATE TABLE hashlists")
-        self.db.q("TRUNCATE TABLE rules")
-        self.db.q("TRUNCATE TABLE tasks")
-        self.db.q("TRUNCATE TABLE tasks_groups")
-        self.db.q("TRUNCATE TABLE task_works")
-
-    def _add_hashlist(self, id=1, name='test', alg_id=3, have_salts=0, status='ready', common_by_alg=0):
-        self.db.insert(
-            "hashlists",
-            {
-                'id': id,
-                'name': name,
-                'alg_id': alg_id,
-                'have_salts': have_salts,
-                'delimiter': '',
-                'cracked': 0,
-                'uncracked': 0,
-                'errors': '',
-                'parsed': 1,
-                'tmp_path': '',
-                'status': status,
-                'when_loaded': 0,
-                'common_by_alg': common_by_alg,
-            }
-        )
-
-    def _add_hash(self, hashlist_id=1, hash='', salt='', summ=''):
-        self.db.insert(
-            "hashes",
-            {
-                'hashlist_id': hashlist_id,
-                'hash': hash,
-                'salt': salt,
-                'password': '',
-                'cracked': 0,
-                'summ': summ
-            }
-        )
 
     def test_get_common_hashlist_id_by_alg_get(self):
         self._add_hashlist(have_salts=1, common_by_alg=3)
