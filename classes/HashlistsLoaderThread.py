@@ -13,6 +13,7 @@ import threading
 import time
 import os
 import subprocess
+import shutil
 
 from subprocess import Popen, PIPE, check_output
 from classes.Registry import Registry
@@ -116,16 +117,32 @@ class HashlistsLoaderThread(threading.Thread):
         self._update_status('putindb')
         _d("hashlist_loader", "Data go to DB")
 
-        self._db.q(
-            "LOAD DATA LOCAL INFILE '{0}' INTO TABLE `hashes` "
-            "FIELDS TERMINATED BY ',' ENCLOSED BY '\"' "
-            "ESCAPED BY '\\\\' "
-            "(hashlist_id, hash, salt, summ)".format(
-                file_path
-            )
+        hashes_file_path = self.tmp_dir + "/hashes"
+        if os.path.exists(hashes_file_path):
+            os.remove(hashes_file_path)
+        shutil.move(file_path, hashes_file_path)
+
+        importcmd = "mysqlimport --user {0} -p{1} --local --columns hashlist_id,hash,salt,summ --fields-enclosed-by '\"'" \
+        " --fields-terminated-by ',' --fields-escaped-by \"\\\\\" {2} {3}"\
+            .format(
+            Registry().get('config')['main']['mysql_user'],
+            Registry().get('config')['main']['mysql_pass'],
+            Registry().get('config')['main']['mysql_dbname'],
+            hashes_file_path
         )
 
-        os.remove(file_path)
+        subprocess.check_output(importcmd, shell=True)
+
+        # self._db.q(
+        #     "LOAD DATA LOCAL INFILE '{0}' INTO TABLE `hashes` "
+        #     "FIELDS TERMINATED BY ',' ENCLOSED BY '\"' "
+        #     "ESCAPED BY '\\\\' "
+        #     "(hashlist_id, hash, salt, summ)".format(
+        #         file_path
+        #     )
+        # )
+
+        os.remove(hashes_file_path)
         os.remove(hashlist['tmp_path'])
 
     def _find_similar_found_hashes(self, hashlist):
@@ -164,7 +181,7 @@ class HashlistsLoaderThread(threading.Thread):
                 hashlist = self._get_current_hashlist_data()
 
                 _d("hashlist_loader", "Found hashlist #{0}/{1} for work".format(self._current_hashlist_id, hashlist['name']))
-                if len(hashlist['tmp_path']) or not os.path.exists(hashlist['tmp_path']):
+                if not len(hashlist['tmp_path']) or not os.path.exists(hashlist['tmp_path']):
                     _d("hashlist_loader", "ERR: path not exists #{0}/'{1}'".format(self._current_hashlist_id, hashlist['tmp_path']))
                     self._update_status("errpath")
                     self._parsed_flag(1)
