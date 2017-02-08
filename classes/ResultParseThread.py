@@ -18,6 +18,7 @@ from subprocess import Popen, PIPE, check_output
 from Registry import Registry
 from classes.Factory import Factory
 from libs.common import _d, file_lines_count, gen_random_md5, md5, update_hashlist_counts
+from classes.HbsException import HbsException
 
 
 class ResultParseThread(threading.Thread):
@@ -40,68 +41,83 @@ class ResultParseThread(threading.Thread):
         self._update_work_task_field('status', status)
 
     def _get_work_task_data(self):
-        return self._db.fetch_row("SELECT * FROM task_works WHERE id = {0}".format(self.current_work_task_id))
+        return self._db.fetch_row("SELECT * FROM task_works WHERE id = {0}".format(self._get_current_work_task_id()))
 
     def _update_work_task_field(self, field, value):
-        self._db.update("task_works", {field: value}, "id = {0}".format(self.current_work_task_id))
+        self._db.update("task_works", {field: value}, "id = {0}".format(self._get_current_work_task_id()))
 
-    def _update_all_hashlists_counts(self):
-        for id in self._db.fetch_col("SELECT id FROM hashlists"):
+    def _update_all_hashlists_counts_by_alg_id(self, alg_id):
+        for id in self._db.fetch_col("SELECT id FROM hashlists WHERE alg_id = {0}".format(int(alg_id))):
             update_hashlist_counts(self._db, id)
+
+    def _get_current_work_task_id(self):
+        if self.current_work_task_id is None:
+            raise HbsException("Current task for work not set")
+        return self.current_work_task_id
+
+    def _get_waiting_task_for_work(self):
+        self.current_work_task_id = self._db.fetch_one(
+            "SELECT id FROM task_works WHERE status='waitoutparse' ORDER BY id ASC LIMIT 1"
+        )
+        return self._get_current_work_task_id()
+
+    def _get_hashlist_data(self, hashlist_id):
+        return self._db.fetch_row("SELECT * FROM hashlists WHERE id = {0}".format(hashlist_id))
+
+    def _parse_outfile_and_fill_found_hashes(self, work_task, hashlist):
+        out_file_fh = open(work_task['out_file'], 'r')
+        for _line in out_file_fh:
+            _line = _line.strip()
+
+            password = _line[_line.rfind(":") + 1:].strip().decode("hex")
+            summ = md5(_line[:_line.rfind(":")])
+
+            self._db.q(
+                "UPDATE `hashes` h, hashlists hl "
+                "SET h.`password` = {0}, h.cracked = 1 "
+                "WHERE h.hashlist_id = hl.id AND hl.alg_id = {1} AND h.summ = {2} AND h.cracked = 0"
+                    .format(
+                    self._db.quote(password),
+                    hashlist['alg_id'],
+                    self._db.quote(summ),
+                )
+            )
+
+    def _update_task_uncracked_count(self, work_task_id, hashlist_id):
+        self._db.q(
+            "UPDATE task_works SET uncracked_after = "
+            "(SELECT COUNT(id) FROM hashes WHERE hashlist_id = {0} AND !cracked) "
+            "WHERE id = {1}".format(hashlist_id, work_task_id)
+        )
 
     def run(self):
         while True:
-            self.current_work_task_id = self._db.fetch_one(
-                "SELECT id FROM task_works WHERE status='waitoutparse' ORDER BY id ASC LIMIT 1"
-            )
-            if self.current_work_task_id:
-                _d("result_parser", "Getted result of task #{0}".format(self.current_work_task_id))
+            if self._get_waiting_task_for_work():
+                _d("result_parser", "Getted result of task #{0}".format(self._get_current_work_task_id()))
                 self._update_status("outparsing")
 
                 work_task = self._get_work_task_data()
-                hashlist = self._db.fetch_row("SELECT * FROM hashlists WHERE id = {0}".format(work_task['hashlist_id']))
+                hashlist = self._get_hashlist_data(work_task['hashlist_id'])
 
                 if len(work_task['out_file']) and os.path.exists(work_task['out_file']):
                     _d("result_parser", "Start put found passwords info DB")
 
-                    out_file_fh = open(work_task['out_file'], 'r')
-                    for _line in out_file_fh:
-                        _line = _line.strip()
-
-                        password = _line[_line.rfind(":")+1:].strip().decode("hex")
-                        summ = md5(_line[:_line.rfind(":")])
-
-                        self._db.q(
-                            "UPDATE `hashes` h, hashlists hl "
-                            "SET h.`password` = {0}, h.cracked = 1 "
-                            "WHERE h.hashlist_id = hl.id AND hl.alg_id = {1} AND h.summ = {2} AND !h.cracked"
-                            .format(
-                                self._db.quote(password),
-                                hashlist['alg_id'],
-                                self._db.quote(summ),
-                            )
-                        )
+                    self._parse_outfile_and_fill_found_hashes(work_task, hashlist)
 
                     self._update_status('done')
 
                     #os.remove(work_task['out_file'])
                     #self._update_work_task_field('out_file', '')
 
-                    self._db.q(
-                        "UPDATE task_works SET uncracked_after = "
-                        "(SELECT COUNT(id) FROM hashes WHERE hashlist_id = {0} AND !cracked) "
-                        "WHERE id = {1}".format(work_task['hashlist_id'], work_task['id'])
-                    )
+                    self._update_task_uncracked_count(work_task['id'], work_task['hashlist_id'])
 
-                    self._update_all_hashlists_counts()
+                    self._update_all_hashlists_counts_by_alg_id(hashlist['alg_id'])
                 else:
                     self._update_status('done')
                     _d("result_parser", "Outfile {0} not exists".format(work_task['out_file']))
 
-                _d("result_parser", "Work for task #{0} done".format(self.current_work_task_id))
+                _d("result_parser", "Work for task #{0} done".format(self._get_current_work_task_id()))
 
-            self.current_work_task_id = None
             time.sleep(60)
-        pass
 
 
