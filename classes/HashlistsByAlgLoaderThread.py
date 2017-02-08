@@ -76,7 +76,7 @@ class HashlistsByAlgLoaderThread(threading.Thread):
     def _hashes_count_by_algs(self):
         return self._db.fetch_pairs(
                 "SELECT hl.alg_id, COUNT(DISTINCT h.summ) FROM `hashes` h, hashlists hl "
-                "WHERE h.hashlist_id = hl.id AND !h.cracked AND hl.common_by_alg = 0 "
+                "WHERE h.hashlist_id = hl.id AND h.cracked = 0 AND hl.common_by_alg = 0 "
                 "GROUP BY hl.alg_id"
             )
 
@@ -136,11 +136,11 @@ class HashlistsByAlgLoaderThread(threading.Thread):
     def _put_all_hashes_of_alg_in_file(self, alg_id):
         curs = self._db.q(
             "SELECT CONCAT(h.hash, '{0}', h.salt) as hash FROM hashes h, hashlists hl "
-            "WHERE hl.id = h.hashlist_id AND hl.alg_id = {1} AND hl.common_by_alg = 0 AND !h.cracked".format(
+            "WHERE hl.id = h.hashlist_id AND hl.alg_id = {1} AND hl.common_by_alg = 0 AND h.cracked = 0".format(
                 self.DELIMITER, alg_id)
             if self._is_alg_have_salts(alg_id) else
             "SELECT h.hash FROM hashes h, hashlists hl "
-            "WHERE hl.id = h.hashlist_id AND hl.alg_id = {0} AND hl.common_by_alg = 0 AND !h.cracked".format(alg_id)
+            "WHERE hl.id = h.hashlist_id AND hl.alg_id = {0} AND hl.common_by_alg = 0 AND h.cracked = 0".format(alg_id)
         )
 
         tmp_path = self.tmp_dir + "/" + gen_random_md5()
