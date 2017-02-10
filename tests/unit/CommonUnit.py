@@ -70,13 +70,57 @@ class CommonUnit(object):
             }
         )
 
-    def _add_work_task(self, id=1, hashlist_id=1, task_id=1, status='wait', ):
+    def _add_work_task(self, id=1, hashlist_id=1, task_id=1, status='wait', priority=0):
         self.db.insert(
             "task_works",
             {
                 'id': id,
                 'hashlist_id': hashlist_id,
                 'task_id': task_id,
-                'status': status
+                'status': status,
+                'priority': priority,
+            }
+        )
+
+    def _add_task(self, id=1, name='task', group_id=1, type='dict', source=1):
+        self.db.insert(
+            "tasks",
+            {
+                'id': id,
+                'name': name,
+                'group_id': group_id,
+                'type': type,
+                'source': source,
+            }
+        )
+
+    def _add_dict(self, id=1, group_id=1, name='dict', hash='1'):
+        self.db.insert(
+            "dicts",
+            {
+                'id': id,
+                'name': name,
+                'group_id': group_id,
+                'hash': hash,
+            }
+        )
+
+    def _add_dict_group(self, id=1, name='group'):
+        self.db.insert(
+            "dicts_groups",
+            {
+                'id': id,
+                'name': name,
+            }
+        )
+
+    def _add_rule(self, id=1, name='rule', hash='1.rule', count=1):
+        self.db.insert(
+            "rules",
+            {
+                'id': id,
+                'name': name,
+                'hash': hash,
+                'count': count
             }
         )
