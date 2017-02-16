@@ -117,30 +117,22 @@ class HashlistsLoaderThread(threading.Thread):
         self._update_status('putindb')
         _d("hashlist_loader", "Data go to DB")
 
+        if os.path.exists(self.tmp_dir + "/hashes"):
+            os.remove(self.tmp_dir + "/hashes")
+
         hashes_file_path = self.tmp_dir + "/hashes"
-        if os.path.exists(hashes_file_path):
-            os.remove(hashes_file_path)
         shutil.move(file_path, hashes_file_path)
 
-        importcmd = "mysqlimport --user {0} -p{1} --local --columns hashlist_id,hash,salt,summ --fields-enclosed-by '\"'" \
+        importcmd = "mysqlimport --lock-tables --user {0} -p{1} --local --columns hashlist_id,hash,salt,summ --fields-enclosed-by '\"'" \
         " --fields-terminated-by ',' --fields-escaped-by \"\\\\\" {2} {3}"\
             .format(
             Registry().get('config')['main']['mysql_user'],
             Registry().get('config')['main']['mysql_pass'],
             Registry().get('config')['main']['mysql_dbname'],
-            hashes_file_path
+            self.tmp_dir + "/hashes"
         )
 
         subprocess.check_output(importcmd, shell=True)
-
-        # self._db.q(
-        #     "LOAD DATA LOCAL INFILE '{0}' INTO TABLE `hashes` "
-        #     "FIELDS TERMINATED BY ',' ENCLOSED BY '\"' "
-        #     "ESCAPED BY '\\\\' "
-        #     "(hashlist_id, hash, salt, summ)".format(
-        #         file_path
-        #     )
-        # )
 
         os.remove(hashes_file_path)
         os.remove(hashlist['tmp_path'])
