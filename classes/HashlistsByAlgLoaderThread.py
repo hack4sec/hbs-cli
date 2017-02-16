@@ -39,7 +39,7 @@ class HashlistsByAlgLoaderThread(threading.Thread):
     def _get_common_hashlist_id_by_alg(self, alg_id):
         hashlist_id = self._db.fetch_one("SELECT id FROM hashlists WHERE common_by_alg = {0}".format(alg_id))
         if hashlist_id is None:
-            alg_name = alg_name = self._db.fetch_one("SELECT name FROM algs WHERE id = {0}".format(alg_id))
+            alg_name = self._db.fetch_one("SELECT name FROM algs WHERE id = {0}".format(alg_id))
             hashlist_id = self._db.insert(
                 "hashlists",
                 {
