@@ -22,6 +22,8 @@ class HashlistsByAlgLoaderThread(threading.Thread):
     current_hashlist_id = None
     daemon = True
     DELIMITER = 'UNIQUEDELIMITER'
+    TIMEOUT_PER_HASHLIST_CHECK = 1
+    available = True
 
     def __init__(self):
         threading.Thread.__init__(self)
@@ -100,7 +102,6 @@ class HashlistsByAlgLoaderThread(threading.Thread):
                 continue
 
             hashlist_id = self._get_common_hashlist_id_by_alg(alg_id)
-
             if hashlist_id == self._get_current_work_hashlist() or \
                             self._get_hashlist_status(hashlist_id) != 'ready':
                 _d(
@@ -155,7 +156,7 @@ class HashlistsByAlgLoaderThread(threading.Thread):
         return tmp_path
 
     def run(self):
-        while True:
+        while self.available:
             candidate = self._get_possible_hashlist_and_alg()
             if candidate is not None:
                 hashlist_id = candidate['hashlist_id']
@@ -174,4 +175,4 @@ class HashlistsByAlgLoaderThread(threading.Thread):
 
                 _d("hashlist_common_loader", "Done #{0}".format(hashlist_id))
 
-            time.sleep(60)
+            time.sleep(self.TIMEOUT_PER_HASHLIST_CHECK)

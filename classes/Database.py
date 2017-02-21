@@ -115,7 +115,7 @@ class Database(object):
 
     def quote(self, _str):
         """ Escape special chars from str and put it into quotes """
-        return "'" + self.escape(str(_str)) + "'"
+        return "NULL" if _str == None else "'" + self.escape(str(_str)) + "'"
 
     def close(self):
         """ Close db connection """

@@ -211,11 +211,10 @@ class WorkerThread(threading.Thread):
 
         return path_to_hybride_dict
 
-
-    # Словарная - если словари были, а их снесли
     def _build_cmd(self, task, task_is_new, path_to_hashlist):
         alg_id = self._db.fetch_one(
-            "SELECT h.alg_id FROM hashlists h WHERE h.id = {0}".format(self.work_task['hashlist_id'])
+            "SELECT a.alg_id FROM hashlists h, algs a WHERE h.id = {0} AND h.alg_id = a.id "
+                .format(self.work_task['hashlist_id'])
         )
 
         cmd_template = [
@@ -294,7 +293,6 @@ class WorkerThread(threading.Thread):
             out_file = "{0}/{1}.out".format(self.tmp_dir, gen_random_md5())
             self._update_task_props(
                 {
-                    'status': 'work',
                     'session_name': session_name,
                     'path_stdout': path_stdout,
                     'out_file': out_file,
@@ -310,6 +308,8 @@ class WorkerThread(threading.Thread):
             self._calc_hashes_before()
         else:
             path_stdout = self.work_task['path_stdout']
+
+        self._update_task_props({'status': 'work'})
 
         fh_output = open(path_stdout, 'a')
         if not task_is_new:

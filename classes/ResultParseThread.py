@@ -24,6 +24,8 @@ from classes.HbsException import HbsException
 class ResultParseThread(threading.Thread):
     current_work_task_id = None
     daemon = True
+    TIMEOUT_PER_HASHLIST_CHECK = 1
+    available = True
 
     def __init__(self):
         threading.Thread.__init__(self)
@@ -59,7 +61,7 @@ class ResultParseThread(threading.Thread):
         self.current_work_task_id = self._db.fetch_one(
             "SELECT id FROM task_works WHERE status='waitoutparse' ORDER BY id ASC LIMIT 1"
         )
-        return self._get_current_work_task_id()
+        return self.current_work_task_id
 
     def _get_hashlist_data(self, hashlist_id):
         return self._db.fetch_row("SELECT * FROM hashlists WHERE id = {0}".format(hashlist_id))
@@ -91,7 +93,7 @@ class ResultParseThread(threading.Thread):
         )
 
     def run(self):
-        while True:
+        while self.available:
             if self._get_waiting_task_for_work():
                 _d("result_parser", "Getted result of task #{0}".format(self._get_current_work_task_id()))
                 self._update_status("outparsing")
@@ -118,6 +120,6 @@ class ResultParseThread(threading.Thread):
 
                 _d("result_parser", "Work for task #{0} done".format(self._get_current_work_task_id()))
 
-            time.sleep(60)
+            time.sleep(self.TIMEOUT_PER_HASHLIST_CHECK)
 
 

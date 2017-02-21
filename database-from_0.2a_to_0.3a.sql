@@ -1,0 +1,1 @@
+ALTER TABLE `hashlists` CHANGE `common_by_alg` `common_by_alg` SMALLINT UNSIGNED NOT NULL DEFAULT '0';

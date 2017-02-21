@@ -26,7 +26,8 @@ from classes.HbsException import HbsException
 class HashlistsLoaderThread(threading.Thread):
     _current_hashlist_id = None
     daemon = True
-    _sleep_time = 60
+    TIMEOUT_PER_HASHLIST_CHECK = 1
+    available = True
 
     def __init__(self):
         threading.Thread.__init__(self)
@@ -166,7 +167,7 @@ class HashlistsLoaderThread(threading.Thread):
         return self._current_hashlist_id
 
     def run(self):
-        while True:
+        while self.available:
             if self._get_hashlist_for_load():
                 self._update_status("parsing")
 
@@ -195,7 +196,7 @@ class HashlistsLoaderThread(threading.Thread):
 
                 _d("hashlist_loader", "Work for hashlist {0}/{1} done".format(self._current_hashlist_id, hashlist['name']))
 
-            time.sleep(self._sleep_time)
+            time.sleep(self.TIMEOUT_PER_HASHLIST_CHECK)
         pass
 
 

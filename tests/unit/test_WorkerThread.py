@@ -5,6 +5,7 @@ import pytest
 import os
 import shutil
 import json
+import time
 from pprint import pprint
 
 sys.path.append('../../')
@@ -28,6 +29,8 @@ class Test_WorkerThread(CommonUnit):
 
     def teardown(self):
         if isinstance(self.thrd, WorkerThread):
+            self.thrd.available = False
+            time.sleep(1)
             del self.thrd
         #self._clean_db()
 
@@ -248,7 +251,7 @@ class Test_WorkerThread(CommonUnit):
         )
 
         assert cmd == [
-            '/home/me/soft/hc//cudaHashcat64.bin', '-m3', '--outfile-format=5', '--status-automat',
+            '/home/me/soft/hc//cudaHashcat64.bin', '-m900', '--outfile-format=5', '--status-automat',
             '--status-timer=4', '--status', '--potfile-disable', '--outfile=/tmp/out.txt', '--session=/tmp/session.txt',
             '-a0', '/tmp/test.txt', '/tmp//dicts_for_1/*.dict']
 
@@ -264,7 +267,7 @@ class Test_WorkerThread(CommonUnit):
         )
 
         assert cmd == [
-            '/home/me/soft/hc//cudaHashcat64.bin', '-m3', '--outfile-format=5', '--status-automat',
+            '/home/me/soft/hc//cudaHashcat64.bin', '-m900', '--outfile-format=5', '--status-automat',
             '--status-timer=4', '--status', '--potfile-disable', '--outfile=/tmp/out.txt', '--session=/tmp/session.txt',
             '--restore', '-r /tmp/rules//1.rule', '-a0', '/tmp/test.txt', '/tmp//dicts_for_1/*.dict']
 
@@ -281,7 +284,7 @@ class Test_WorkerThread(CommonUnit):
         )
 
         assert cmd == [
-            '/home/me/soft/hc//cudaHashcat64.bin', '-m3', '--outfile-format=5', '--status-automat',
+            '/home/me/soft/hc//cudaHashcat64.bin', '-m900', '--outfile-format=5', '--status-automat',
             '--status-timer=4', '--status', '--potfile-disable', '--outfile=/tmp/out.txt', '--session=/tmp/session.txt',
             '-a3', '/tmp/test.txt', '?l?d?u?s']
 
@@ -301,7 +304,7 @@ class Test_WorkerThread(CommonUnit):
         )
 
         assert cmd == [
-            '/home/me/soft/hc//cudaHashcat64.bin', '-m3', '--outfile-format=5', '--status-automat',
+            '/home/me/soft/hc//cudaHashcat64.bin', '-m900', '--outfile-format=5', '--status-automat',
             '--status-timer=4', '--status', '--potfile-disable', '--outfile=/tmp/out.txt', '--session=/tmp/session.txt',
             '-a3', '--increment', '--increment-min=1', '--increment-max=2', '--custom-charset1=abc',
             '--custom-charset2=def', '--custom-charset3=ghi', '--custom-charset4=klm', '/tmp/test.txt', '?l?d?u?s']
@@ -329,7 +332,7 @@ class Test_WorkerThread(CommonUnit):
         )
 
         assert cmd == [
-            '/home/me/soft/hc//cudaHashcat64.bin', '-m3', '--outfile-format=5', '--status-automat',
+            '/home/me/soft/hc//cudaHashcat64.bin', '-m900', '--outfile-format=5', '--status-automat',
             '--status-timer=4', '--status', '--potfile-disable', '--outfile=/tmp/out.txt', '--session=/tmp/session.txt',
             '-a7', '/tmp/test.txt', '?l?d?u?s', self.thrd.work_task['hybride_dict']]
 
@@ -349,7 +352,7 @@ class Test_WorkerThread(CommonUnit):
         )
 
         assert cmd == [
-            '/home/me/soft/hc//cudaHashcat64.bin', '-m3', '--outfile-format=5', '--status-automat',
+            '/home/me/soft/hc//cudaHashcat64.bin', '-m900', '--outfile-format=5', '--status-automat',
             '--status-timer=4', '--status', '--potfile-disable', '--outfile=/tmp/out.txt', '--session=/tmp/session.txt',
             '--custom-charset1=abc', '--custom-charset2=def', '--custom-charset3=ghi', '--custom-charset4=klm',
             '-a7', '/tmp/test.txt', '?l?d?u?s', self.thrd.work_task['hybride_dict']]
@@ -376,7 +379,7 @@ class Test_WorkerThread(CommonUnit):
         )
 
         assert cmd == [
-            '/home/me/soft/hc//cudaHashcat64.bin', '-m3', '--outfile-format=5', '--status-automat',
+            '/home/me/soft/hc//cudaHashcat64.bin', '-m900', '--outfile-format=5', '--status-automat',
             '--status-timer=4', '--status', '--potfile-disable', '--outfile=/tmp/out.txt', '--session=/tmp/session.txt',
             '-a6', '/tmp/test.txt', self.thrd.work_task['hybride_dict'], '?l?d?u?s']
 
@@ -396,7 +399,7 @@ class Test_WorkerThread(CommonUnit):
         )
 
         assert cmd == [
-            '/home/me/soft/hc//cudaHashcat64.bin', '-m3', '--outfile-format=5', '--status-automat',
+            '/home/me/soft/hc//cudaHashcat64.bin', '-m900', '--outfile-format=5', '--status-automat',
             '--status-timer=4', '--status', '--potfile-disable', '--outfile=/tmp/out.txt', '--session=/tmp/session.txt',
             '--custom-charset1=abc', '--custom-charset2=def', '--custom-charset3=ghi', '--custom-charset4=klm',
             '-a6', '/tmp/test.txt', self.thrd.work_task['hybride_dict'], '?l?d?u?s']

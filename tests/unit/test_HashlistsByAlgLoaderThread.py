@@ -15,7 +15,7 @@ from classes.Database import Database
 from classes.HashlistsByAlgLoaderThread import HashlistsByAlgLoaderThread
 from CommonUnit import CommonUnit
 
-class Test_HashlistsLoaderThread(CommonUnit):
+class Test_HashlistsByAlgLoaderThread(CommonUnit):
     db = None
     thrd = None
 
@@ -25,6 +25,8 @@ class Test_HashlistsLoaderThread(CommonUnit):
 
     def teardown(self):
         if isinstance(self.thrd, HashlistsByAlgLoaderThread):
+            self.thrd.available = False
+            time.sleep(1)
             del self.thrd
         self._clean_db()
 
@@ -32,24 +34,24 @@ class Test_HashlistsLoaderThread(CommonUnit):
         self._add_hashlist(have_salts=1, common_by_alg=3)
         assert 1 == self.thrd._get_common_hashlist_id_by_alg(3)
 
-    def test_get_common_hashlist_id_by_alg_without_salt_create(self):
-        assert 1 == self.thrd._get_common_hashlist_id_by_alg(3)
-
-        test_hashlist_data = {'id': 1, 'name': 'All-MD4', 'have_salts': 0, 'delimiter': self.thrd.DELIMITER,
-                              'cracked': 0, 'uncracked': 0, 'errors': '', 'parsed': 0, 'status': 'ready',
-                              'common_by_alg': 3}
-        hashlist_data = self.db.fetch_row("SELECT * FROM hashlists WHERE id = 1")
-
-        for field in test_hashlist_data:
-            assert hashlist_data[field] == test_hashlist_data[field]
-
-    def test_get_common_hashlist_id_by_alg_with_salt_create(self):
-        self._add_hashlist(have_salts=1, common_by_alg=0)
-        self._add_hash(hash='a', salt='b', summ='333')
+    test_data = [
+        (
+            1,
+            {'hash': 'a', 'salt': '1', 'summ': md5('a:1')},
+        ),
+        (
+            0,
+            {'hash': 'a', 'salt': '', 'summ': md5('a')},
+        ),
+    ]
+    @pytest.mark.parametrize("have_salt,_hash", test_data)
+    def test_get_common_hashlist_id_by_alg_create(self, have_salt, _hash):
+        self._add_hashlist(have_salts=have_salt, common_by_alg=0)
+        self._add_hash(hash=_hash['hash'], salt=_hash['salt'], summ=_hash['summ'])
 
         assert 2 == self.thrd._get_common_hashlist_id_by_alg(3)
 
-        test_hashlist_data = {'id': 2, 'name': 'All-MD4', 'have_salts': 1, 'delimiter': self.thrd.DELIMITER,
+        test_hashlist_data = {'id': 2, 'name': 'All-MD4', 'have_salts': have_salt, 'delimiter': self.thrd.DELIMITER,
                               'cracked': 0, 'uncracked': 0, 'errors': '', 'parsed': 0, 'status': 'ready',
                               'common_by_alg': 3}
         hashlist_data = self.db.fetch_row("SELECT * FROM hashlists WHERE id = 2")
@@ -200,24 +202,3 @@ class Test_HashlistsLoaderThread(CommonUnit):
 
         assert os.path.exists(path)
         assert file_get_contents(path) == 'a{0}b\nc{0}d\n'.format(self.thrd.DELIMITER)
-
-    def test_simple_one_run(self):
-        self._add_hashlist()
-        self._add_hash(hash='a', summ='111')
-        self._add_hash(hash='b', summ='222')
-
-        assert None == self.db.fetch_one("SELECT id FROM hashlists WHERE common_by_alg")
-
-        self.thrd.start()
-        time.sleep(5)
-
-        test_hashlist_data = {'id': 2, 'name': 'All-MD4', 'have_salts': 0, 'delimiter': self.thrd.DELIMITER,
-                              'cracked': 0, 'uncracked': 0, 'errors': '', 'parsed': 0, 'status': 'wait',
-                              'common_by_alg': 3}
-        hashlist_data = self.db.fetch_row("SELECT * FROM hashlists WHERE common_by_alg")
-
-        for field in test_hashlist_data:
-            assert hashlist_data[field] == test_hashlist_data[field]
-
-
-
