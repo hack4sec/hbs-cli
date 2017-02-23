@@ -23,6 +23,7 @@ from classes.WorkerThread import WorkerThread
 from classes.HashlistsLoaderThread import HashlistsLoaderThread
 from classes.ResultParseThread import ResultParseThread
 from classes.HashlistsByAlgLoaderThread import HashlistsByAlgLoaderThread
+from classes.FinderInsideProThread import FinderInsideProThread
 from libs.common import _d
 
 config = configparser.ConfigParser()
@@ -69,16 +70,19 @@ sys.stdout.flush()
 Registry().set('db', db)
 
 hashlists_loader_thrd = HashlistsLoaderThread()
-#hashlists_loader_thrd.daemon = True
 hashlists_loader_thrd.start()
 
 result_parse_thrd = ResultParseThread()
-#result_parse_thrd.daemon = True
 result_parse_thrd.start()
 
 hashlists_by_alg_loader_thrd = HashlistsByAlgLoaderThread()
-#hashlists_by_alg_loader_thrd.daemon = True
 hashlists_by_alg_loader_thrd.start()
+
+if len(config['main']['finder_key']):
+    finder_insidepro_thrd = FinderInsideProThread()
+    finder_insidepro_thrd.start()
+else:
+    _d('main', 'FinderInsidePro key not found, service will not start')
 
 work_thrd = None
 while True:
@@ -93,7 +97,6 @@ while True:
     )
     if next_work_task:
         work_thrd = WorkerThread(next_work_task)
-        #work_thrd.setDaemon(True)
         work_thrd.start()
 
         while not work_thrd.done:
