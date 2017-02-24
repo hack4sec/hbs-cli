@@ -1,15 +1,28 @@
 # -*- coding: utf-8 -*-
+"""
+This is part of HashBruteStation software
+Docs EN: http://hack4sec.pro/wiki/index.php/Hash_Brute_Station_en
+Docs RU: http://hack4sec.pro/wiki/index.php/Hash_Brute_Station
+License: MIT
+Copyright (c) Anton Kuzmin <http://anton-kuzmin.ru> (ru) <http://anton-kuzmin.pro> (en)
+
+Common class for unit tests
+"""
 
 import os
+
 import configparser
+
 from classes.Registry import Registry
 from classes.Database import Database
 
 
 class CommonUnit(object):
+    """ Common class for unit tests """
     db = None
 
     def setup_class(self):
+        """ Prepare class for run tests """
         CURPATH = os.path.dirname(__file__) + "/"
 
         config = configparser.ConfigParser()
@@ -27,6 +40,7 @@ class CommonUnit(object):
         self.db = Registry().get('db')  # type: Database
 
     def _clean_db(self):
+        """ Clean tables for tests """
         self.db.q("TRUNCATE TABLE dicts")
         self.db.q("TRUNCATE TABLE dicts_groups")
         self.db.q("TRUNCATE TABLE hashes")
@@ -36,7 +50,11 @@ class CommonUnit(object):
         self.db.q("TRUNCATE TABLE tasks_groups")
         self.db.q("TRUNCATE TABLE task_works")
 
-    def _add_hashlist(self, id=1, name='test', alg_id=3, have_salts=0, status='ready', common_by_alg=0, parsed=1):
+        self.db.update("algs", {'finder_insidepro_allowed': 0}, "id")
+
+    def _add_hashlist(self, id=1, name='test', alg_id=3, have_salts=0,
+                      status='ready', common_by_alg=0, parsed=1, last_finder_checked=0):
+        """ Add hashlist record """
         self.db.insert(
             "hashlists",
             {
@@ -53,10 +71,12 @@ class CommonUnit(object):
                 'status': status,
                 'when_loaded': 0,
                 'common_by_alg': common_by_alg,
+                'last_finder_checked': last_finder_checked
             }
         )
 
     def _add_hash(self, hashlist_id=1, hash='', salt='', summ='', password='', cracked=0, id=None):
+        """ Add hash record """
         self.db.insert(
             "hashes",
             {
@@ -71,6 +91,7 @@ class CommonUnit(object):
         )
 
     def _add_work_task(self, id=1, hashlist_id=1, task_id=1, status='wait', priority=0):
+        """ Add work task record """
         self.db.insert(
             "task_works",
             {
@@ -83,6 +104,7 @@ class CommonUnit(object):
         )
 
     def _add_task(self, id=1, name='task', group_id=1, type='dict', source=1):
+        """ Add task record """
         self.db.insert(
             "tasks",
             {
@@ -95,6 +117,7 @@ class CommonUnit(object):
         )
 
     def _add_dict(self, id=1, group_id=1, name='dict', hash='1'):
+        """ Add dict record """
         self.db.insert(
             "dicts",
             {
@@ -106,6 +129,7 @@ class CommonUnit(object):
         )
 
     def _add_dict_group(self, id=1, name='group'):
+        """ Add dict group record """
         self.db.insert(
             "dicts_groups",
             {
@@ -115,6 +139,7 @@ class CommonUnit(object):
         )
 
     def _add_rule(self, id=1, name='rule', hash='1.rule', count=1):
+        """ Add rule record """
         self.db.insert(
             "rules",
             {

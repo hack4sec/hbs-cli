@@ -19,10 +19,12 @@ class FinderInsideProException(BaseException):
     """ Exeptions class for finder.insidepro.com API """
     TYPE_SESSION_IS_WRONG = "0"
     TYPE_KEY_IS_WRONG = "1"
+    TYPE_SMALL_REMAIN = "2"
 
     EXCEPTION_TEXT_WRONG_KEY = "Check key valid, server answer 403"
     EXCEPTION_TEXT_KEY_NOT_SET = "Finder key is not set"
     EXCEPTION_TEXT_HASHES_COUNT_LIMIT = "Hashes count must be less {0}"
+    EXCEPTION_TEXT_SMALL_REMAIN = "Count of remain hashes ({0}) less when limit ({1})"
 
     SESSION_ERROR_TEXT = "Session not initialized"
 
@@ -129,6 +131,8 @@ class FinderInsidePro(object):
         Method send request to server for hashes search and return hashes list with found passwords (result of
         parse_and_fill_hashes_from_xml() method).
         :exception FinderInsideProException: If you give per once more hashes then limit
+        :exception FinderInsideProException: If remain hashes count less minimal hashes limit per once
+        :exception FinderInsideProException: If client can`t create session twice
         :param hashes: List of hashes which was sended to server. Format: [{'hash': '...', 'salt': '...'}, ...]
         :return list: List of found hashes with hash, salt and password keys (and with other fields if they was
         in 'hashes' param). Format: [{'hash': '...', 'salt': '...', 'password': '...'}, ...]
@@ -139,6 +143,10 @@ class FinderInsidePro(object):
 
         if not len(self.session_id):
             self.create_session()
+
+        if self.get_remain_limit() < self.hashes_per_once_limit:
+            raise FinderInsideProException(
+                FinderInsideProException.EXCEPTION_TEXT_SMALL_REMAIN, FinderInsideProException.TYPE_SMALL_REMAIN)
 
         hashes_list = []
         for _hash in hashes:

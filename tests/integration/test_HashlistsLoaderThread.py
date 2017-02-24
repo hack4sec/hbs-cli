@@ -1,4 +1,13 @@
 # -*- coding: utf-8 -*-
+"""
+This is part of HashBruteStation software
+Docs EN: http://hack4sec.pro/wiki/index.php/Hash_Brute_Station_en
+Docs RU: http://hack4sec.pro/wiki/index.php/Hash_Brute_Station
+License: MIT
+Copyright (c) Anton Kuzmin <http://anton-kuzmin.ru> (ru) <http://anton-kuzmin.pro> (en)
+
+HashlistsLoaderThread integration tests
+"""
 
 import sys
 import time
@@ -11,15 +20,18 @@ from classes.HashlistsLoaderThread import HashlistsLoaderThread
 from CommonIntegration import CommonIntegration
 
 class Test_HashlistsLoaderThread(CommonIntegration):
+    """ HashlistsLoaderThread integration tests """
     thrd = None
 
     def setup(self):
+        """ Setup tests """
         self._clean_db()
 
         self.thrd = HashlistsLoaderThread()
-        self.thrd.TIMEOUT_PER_HASHLIST_CHECK = 1
+        self.thrd.delay_per_check = 1
 
     def teardown(self):
+        """ Teardown tests """
         if isinstance(self.thrd, HashlistsLoaderThread):
             self.thrd.available = False
             time.sleep(1)
@@ -133,7 +145,15 @@ class Test_HashlistsLoaderThread(CommonIntegration):
     ]
     @pytest.mark.parametrize("have_salts,hashes_content,count_expected,hashes_expected,hashes_found", test_data)
     def test_load_simple_list(self, have_salts, hashes_content, count_expected, hashes_expected, hashes_found):
-
+        """
+        Loading simple list in db
+        :param have_salts: Does hashlist has salt?
+        :param hashes_content: Text content of hashlist
+        :param count_expected: How many hashes we expected in db?
+        :param hashes_expected: Rows with hashes we expected in db?
+        :param hashes_found: Rows with found hashes after load, we expected
+        :return:
+        """
         self._add_hashlist(have_salts=have_salts, parsed=0, tmp_path='/tmp/1.txt', status='wait')
         file_put_contents('/tmp/1.txt', hashes_content)
 
@@ -150,12 +170,15 @@ class Test_HashlistsLoaderThread(CommonIntegration):
 
         assert count_expected == self.db.fetch_one("SELECT COUNT(id) FROM hashes WHERE hashlist_id = 1")
         for _hash in hashes_expected:
-            assert 1 == self.db.fetch_one(
-                "SELECT COUNT(id) FROM hashes WHERE hashlist_id = 1 AND hash = {0} AND salt = {1} AND summ = {2} AND password = {3} AND cracked = {4}".
-                format(self.db.quote(_hash['hash']), self.db.quote(_hash['salt']), self.db.quote(_hash['summ']), self.db.quote(_hash['password']), _hash['cracked'])
-            )
+            assert self.db.fetch_one(
+                "SELECT COUNT(id) FROM hashes WHERE hashlist_id = 1 "
+                "AND hash = {0} AND salt = {1} AND summ = {2} AND password = {3} AND cracked = {4}".
+                format(self.db.quote(_hash['hash']), self.db.quote(_hash['salt']), self.db.quote(_hash['summ']),
+                       self.db.quote(_hash['password']), _hash['cracked'])
+            ) == 1
 
     def test_add_hashes_to_exists_list(self):
+        """ Test adding hashes to exists hashlist """
         self._add_hashlist(parsed=0, tmp_path='/tmp/1.txt', status='wait')
         file_put_contents('/tmp/1.txt', 'c\nd\ne\n', )
 
@@ -170,6 +193,7 @@ class Test_HashlistsLoaderThread(CommonIntegration):
                self.db.fetch_col("SELECT hash FROM hashes WHERE hashlist_id = 1 ORDER BY hash")
 
     def test_add_hashes_to_exists_list_with_founds(self):
+        """ Testing add hashes to exists list with already found hashes """
         self._add_hashlist(parsed=0, tmp_path='/tmp/1.txt', status='wait')
         file_put_contents('/tmp/1.txt', 'c\nd\ne\n', )
 
@@ -183,7 +207,8 @@ class Test_HashlistsLoaderThread(CommonIntegration):
         self.thrd.start()
         time.sleep(5)
 
-        assert ['a', 'b', 'c', 'd', 'e'] == \
-               self.db.fetch_col("SELECT hash FROM hashes WHERE hashlist_id = 1 ORDER BY hash")
+        assert self.db.fetch_col("SELECT hash FROM hashes WHERE hashlist_id = 1 ORDER BY hash") == \
+               ['a', 'b', 'c', 'd', 'e']
 
-        assert 'aaa' == self.db.fetch_one("SELECT password FROM hashes WHERE hashlist_id = 1 AND cracked = 1 AND hash = 'a'")
+        assert self.db.fetch_one("SELECT password FROM hashes "
+                                 "WHERE hashlist_id = 1 AND cracked = 1 AND hash = 'a'") == 'aaa'

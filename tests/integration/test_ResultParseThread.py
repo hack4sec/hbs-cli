@@ -1,4 +1,13 @@
 # -*- coding: utf-8 -*-
+"""
+This is part of HashBruteStation software
+Docs EN: http://hack4sec.pro/wiki/index.php/Hash_Brute_Station_en
+Docs RU: http://hack4sec.pro/wiki/index.php/Hash_Brute_Station
+License: MIT
+Copyright (c) Anton Kuzmin <http://anton-kuzmin.ru> (ru) <http://anton-kuzmin.pro> (en)
+
+Class of integration tests for WorkerThread
+"""
 
 import sys
 import time
@@ -11,18 +20,17 @@ from classes.ResultParseThread import ResultParseThread
 from CommonIntegration import CommonIntegration
 
 class Test_ResultParseThread(CommonIntegration):
+    """ Class of integration tests for WorkerThread """
     thrd = None
     loader_thrd = None
 
-    thrd = None
-
     def setup(self):
+        """ Setup tests """
         self._clean_db()
-
         self.thrd = ResultParseThread()
-        self.thrd.TIMEOUT_PER_HASHLIST_CHECK = 1
 
     def teardown(self):
+        """ Teardown tests """
         if isinstance(self.thrd, ResultParseThread):
             self.thrd.available = False
             time.sleep(1)
@@ -83,6 +91,7 @@ class Test_ResultParseThread(CommonIntegration):
     ]
     @pytest.mark.parametrize("have_salts,out_content,expected_cracked_count,hashes", test_data)
     def test_simple_out(self, have_salts, out_content, expected_cracked_count, hashes):
+        """ Parse simple outfile """
         file_put_contents('/tmp/1.txt', out_content)
 
         self._add_hashlist(have_salts=have_salts)
@@ -95,8 +104,10 @@ class Test_ResultParseThread(CommonIntegration):
         self.thrd.start()
         time.sleep(5)
 
-        assert 'done' == self.db.fetch_one("SELECT status FROM task_works WHERE id = 1")
-        assert len(hashes) - expected_cracked_count == self.db.fetch_one("SELECT uncracked_after FROM task_works WHERE id = 1")
+        assert self.db.fetch_one("SELECT status FROM task_works WHERE id = 1") == 'done'
+        assert len(hashes) - expected_cracked_count == self.db.fetch_one(
+            "SELECT uncracked_after FROM task_works WHERE id = 1")
 
         for _hash in hashes:
-            assert _hash['password'] == self.db.fetch_one("SELECT password FROM hashes WHERE hash = {0}".format(self.db.quote(_hash['hash'])))
+            assert _hash['password'] == self.db.fetch_one(
+                "SELECT password FROM hashes WHERE hash = {0}".format(self.db.quote(_hash['hash'])))

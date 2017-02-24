@@ -1,5 +1,13 @@
 # -*- coding: utf-8 -*-
+"""
+This is part of HashBruteStation software
+Docs EN: http://hack4sec.pro/wiki/index.php/Hash_Brute_Station_en
+Docs RU: http://hack4sec.pro/wiki/index.php/Hash_Brute_Station
+License: MIT
+Copyright (c) Anton Kuzmin <http://anton-kuzmin.ru> (ru) <http://anton-kuzmin.pro> (en)
 
+Integration tests for HashlistsByAlgLoaderThread
+"""
 import sys
 import time
 import pytest
@@ -12,19 +20,22 @@ from classes.HashlistsLoaderThread import HashlistsLoaderThread
 from CommonIntegration import CommonIntegration
 
 class Test_HashlistsByAlgLoaderThread(CommonIntegration):
+    """ Class of integration tests - HashlistsByAlgLoaderThread """
     thrd = None
     loader_thrd = None
 
     def setup(self):
+        """ Tests setup """
         self._clean_db()
 
         self.thrd = HashlistsByAlgLoaderThread()
-        self.thrd.TIMEOUT_PER_HASHLIST_CHECK = 1
+        self.thrd.delay_per_check = 1
 
         self.loader_thrd = HashlistsLoaderThread()
-        self.loader_thrd.TIMEOUT_PER_HASHLIST_CHECK = 1
+        self.loader_thrd.delay_per_check = 1
 
     def teardown(self):
+        """ Tests teardown """
         if isinstance(self.thrd, HashlistsByAlgLoaderThread):
             self.thrd.available = False
             time.sleep(1)
@@ -60,11 +71,17 @@ class Test_HashlistsByAlgLoaderThread(CommonIntegration):
     ]
     @pytest.mark.parametrize("hashes,have_salt", test_data)
     def test_simple_build(self, hashes, have_salt):
+        """
+        Simple common hashlist build
+        :param hashes: hashes rows
+        :param have_salt: Does alg has salt?
+        :return:
+        """
         self._add_hashlist(have_salts=have_salt)
         for _hash in hashes:
             self._add_hash(hash=_hash['hash'], salt=_hash['salt'], summ=_hash['summ'])
 
-        assert None == self.db.fetch_one("SELECT id FROM hashlists WHERE common_by_alg")
+        assert self.db.fetch_one("SELECT id FROM hashlists WHERE common_by_alg") is None
 
         self.thrd.start()
         self.loader_thrd.start()
@@ -78,11 +95,11 @@ class Test_HashlistsByAlgLoaderThread(CommonIntegration):
         for field in test_hashlist_data:
             assert hashlist_data[field] == test_hashlist_data[field]
 
-        for hash in hashes:
-            assert 1 == self.db.fetch_one(
+        for _hash in hashes:
+            assert self.db.fetch_one(
                 "SELECT COUNT(id) FROM hashes WHERE hash = {0} AND salt={1} AND summ = {2} AND hashlist_id = 2".
-                format(self.db.quote(hash['hash']), self.db.quote(hash['salt']), self.db.quote(hash['summ']))
-            )
+                format(self.db.quote(_hash['hash']), self.db.quote(_hash['salt']), self.db.quote(_hash['summ']))
+            ) == 1
 
     test_data = [
         (
@@ -114,6 +131,13 @@ class Test_HashlistsByAlgLoaderThread(CommonIntegration):
     ]
     @pytest.mark.parametrize("hashes_in_self,hashes_in_common,have_salt", test_data)
     def test_update_exists_list(self, hashes_in_self, hashes_in_common, have_salt):
+        """
+        Updating exists common hashlist
+        :param hashes_in_self: Hashes in usual hashlist
+        :param hashes_in_common: Hashes in common hashlist
+        :param have_salt: Does alg has salt?
+        :return:
+        """
         self._add_hashlist(have_salts=have_salt)
         for _hash in hashes_in_self:
             self._add_hash(hash=_hash['hash'], salt=_hash['salt'], summ=_hash['summ'], cracked=_hash['cracked'])
@@ -124,18 +148,18 @@ class Test_HashlistsByAlgLoaderThread(CommonIntegration):
                 hashlist_id=2, hash=_hash['hash'], salt=_hash['salt'], summ=_hash['summ'], cracked=_hash['cracked']
             )
 
-        assert 2 == self.db.fetch_one("SELECT COUNT(id) FROM hashes WHERE hash='b'")
-        assert 1 == self.db.fetch_one("SELECT COUNT(id) FROM hashes WHERE hash='c'")
-        assert 1 == self.db.fetch_one("SELECT COUNT(id) FROM hashes WHERE hash='d'")
+        assert self.db.fetch_one("SELECT COUNT(id) FROM hashes WHERE hash='b'") == 2
+        assert self.db.fetch_one("SELECT COUNT(id) FROM hashes WHERE hash='c'") == 1
+        assert self.db.fetch_one("SELECT COUNT(id) FROM hashes WHERE hash='d'") == 1
 
         self.thrd.start()
         self.loader_thrd.start()
 
         time.sleep(5)
 
-        assert 1 == self.db.fetch_one("SELECT COUNT(id) FROM hashes WHERE hash='b'")
-        assert 2 == self.db.fetch_one("SELECT COUNT(id) FROM hashes WHERE hash='c'")
-        assert 2 == self.db.fetch_one("SELECT COUNT(id) FROM hashes WHERE hash='d'")
+        assert self.db.fetch_one("SELECT COUNT(id) FROM hashes WHERE hash='b'") == 1
+        assert self.db.fetch_one("SELECT COUNT(id) FROM hashes WHERE hash='c'") == 2
+        assert self.db.fetch_one("SELECT COUNT(id) FROM hashes WHERE hash='d'") == 2
 
         assert [{'hash': 'a'}, {'hash': 'c'}, {'hash': 'd'}] \
                == self.db.fetch_all("SELECT hash FROM hashes WHERE hashlist_id = 2")
@@ -143,6 +167,11 @@ class Test_HashlistsByAlgLoaderThread(CommonIntegration):
     test_data = [('outparsing'), ('waitoutparse')]
     @pytest.mark.parametrize("status", test_data)
     def test_build_with_parsing_alg(self, status):
+        """
+        Try build no ready hashlist
+        :param status:
+        :return:
+        """
         self._add_hashlist()
         self._add_hash(hash='a', summ='111')
         self._add_hash(hash='b', summ='222')
@@ -151,13 +180,13 @@ class Test_HashlistsByAlgLoaderThread(CommonIntegration):
 
         self._add_work_task(hashlist_id=2, status=status)
 
-        assert None == self.db.fetch_one("SELECT id FROM hashlists WHERE common_by_alg")
+        assert self.db.fetch_one("SELECT id FROM hashlists WHERE common_by_alg") is None
 
         self.thrd.start()
         self.loader_thrd.start()
         time.sleep(5)
 
-        assert None == self.db.fetch_one("SELECT id FROM hashlists WHERE common_by_alg")
+        assert self.db.fetch_one("SELECT id FROM hashlists WHERE common_by_alg") is None
 
         self.db.update("task_works", {'status': 'wait'}, 'id=1')
 
@@ -171,5 +200,4 @@ class Test_HashlistsByAlgLoaderThread(CommonIntegration):
         for field in test_hashlist_data:
             assert hashlist_data[field] == test_hashlist_data[field]
 
-        assert [{'hash': 'a'}, {'hash': 'b'}] \
-               == self.db.fetch_all("SELECT hash FROM hashes WHERE hashlist_id = 3")
+        assert self.db.fetch_all("SELECT hash FROM hashes WHERE hashlist_id = 3") == [{'hash': 'a'}, {'hash': 'b'}]

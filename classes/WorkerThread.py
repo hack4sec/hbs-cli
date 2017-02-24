@@ -18,7 +18,7 @@ import json
 
 from subprocess import Popen, PIPE, check_output
 from classes.Registry import Registry
-from HbsException import HbsException
+from classes.HbsException import HbsException
 
 from libs.common import _d, gen_random_md5
 
@@ -36,6 +36,10 @@ class WorkerThread(threading.Thread):
     hc_bin = None
 
     def __init__(self, work_task):
+        """
+        Initialization
+        :param work_task: Work task row (named dict from db)
+        """
         threading.Thread.__init__(self)
         self.work_task = work_task
         self._db = Registry().get('db')
@@ -48,7 +52,8 @@ class WorkerThread(threading.Thread):
         self.path_to_hc = config['main']['path_to_hc']
         self.hc_bin = config['main']['hc_bin']
 
-    def _clean_stdout_file(self):
+    def clean_stdout_file(self):
+        """ Clean stdout file from status-automate entries """
         content = ""
 
         if os.path.exists(self.work_task['path_stdout']):
@@ -71,12 +76,17 @@ class WorkerThread(threading.Thread):
         fh.write(content)
         fh.close()
 
-    def _refresh_work_task(self):
+    def refresh_work_task(self):
+        """ Refresh current work task data """
         self.work_task = self._db.fetch_row(
             "SELECT * FROM task_works WHERE id = {0}".format(self.work_task['id'])
         )
 
-    def _not_high_priority(self):
+    def not_high_priority(self):
+        """
+        Is current task a most priority?
+        :return int: Id of most priority task
+        """
         return self._db.fetch_one(
             ("SELECT tw.id FROM task_works tw, hashlists hl "
              "WHERE tw.hashlist_id = hl.id  AND tw.priority > {0} AND tw.status='wait' AND tw.id != {1} "
@@ -91,7 +101,12 @@ class WorkerThread(threading.Thread):
             )
         )
 
-    def _update_hc_status(self, status_row):
+    def update_hc_status(self, status_row):
+        """
+        Update hc-data of current task - temp, progress, speed, etc
+        :param status_row: list with status data
+        :return:
+        """
         hc_status, hc_speed, hc_curku, hc_progress, hc_rechash, hc_recsalt, hc_temp = status_row
         self._db.q(
             ("UPDATE task_works SET "
@@ -108,11 +123,20 @@ class WorkerThread(threading.Thread):
             )
         )
 
-    def _update_task_props(self, data):
+    def update_task_props(self, data):
+        """
+        Update task properties
+        :param data: Named dict with update data
+        :return:
+        """
         self._db.update('task_works', data, "id = {0}".format(self.work_task['id']))
-        self._refresh_work_task()
+        self.refresh_work_task()
 
-    def _make_hashlist(self):
+    def make_hashlist(self):
+        """
+        Build txt hashlist from database
+        :return str: Path to txt hashlist
+        """
         path_to_hashlist = self.tmp_dir + "/" + gen_random_md5()
         fh = open(path_to_hashlist, 'w')
         res = self._db.q(
@@ -128,14 +152,21 @@ class WorkerThread(threading.Thread):
 
         return path_to_hashlist
 
-    def _calc_hashes_before(self):
+    def calc_hashes_before(self):
+        """ Calculate uncracked hashes count before task run """
         self._db.q(
             "UPDATE task_works SET uncracked_before = "
             "(SELECT COUNT(id) FROM hashes WHERE hashlist_id = {0} AND cracked = 0) "
             "WHERE id = {1}".format(self.work_task['hashlist_id'], self.work_task['id'])
         )
 
-    def _change_task_status(self, stop_by_priority, process_stoped):
+    def change_task_status(self, stop_by_priority, process_stoped):
+        """
+        Change task status when it stop (set stop, wait or waitoutparse)
+        :param stop_by_priority:
+        :param process_stoped:
+        :return:
+        """
         if stop_by_priority:
             self._db.q("UPDATE task_works SET status='wait' WHERE id = {0}".format(self.work_task['id']))
         else:
@@ -146,15 +177,32 @@ class WorkerThread(threading.Thread):
             )
 
     def get_task_data_by_id(self, task_id):
+        """
+        Get task row by id
+        :param task_id:
+        :return dict: Named dict with task data
+        """
         return self._db.fetch_row("SELECT * FROM tasks WHERE id = {0}".format(task_id))
 
-    def _add_custom_charsets_to_cmd(self, task, cmd_to_run):
+    def add_custom_charsets_to_cmd(self, task, cmd_to_run):
+        """
+        Add custom charsets to cmd
+        :param task: Task row
+        :param cmd_to_run: cmd for change
+        :return:
+        """
         for i in range(1, 5):
             if task['custom_charset{0}'.format(i)] is not None and len(task['custom_charset{0}'.format(i)]):
                 cmd_to_run.append("--custom-charset{0}=".format(i) + task['custom_charset{0}'.format(i)])
         return cmd_to_run
 
-    def _add_increment_to_cmd(self, task, cmd_to_run):
+    def add_increment_to_cmd(self, task, cmd_to_run):
+        """
+        Adding increment params to cmd
+        :param task: Task row
+        :param cmd_to_run: cmd for change
+        :return:
+        """
         if task['increment']:
             if int(task['increment_min']) > int(task['increment_max']):
                 raise HbsException(
@@ -169,7 +217,13 @@ class WorkerThread(threading.Thread):
             cmd_to_run.append("--increment-max=" + str(task['increment_max']))
         return cmd_to_run
 
-    def _build_dicts(self, task_is_new, task):
+    def build_dicts(self, task_is_new, task):
+        """
+        Build symlinks on need dicts group
+        :param task_is_new: is this task new? (dicts already done)
+        :param task: task row
+        :return:
+        """
         tmp_dicts_dir = self.tmp_dir + "/dicts_for_{0}".format(self.work_task['id'])
 
         if task_is_new or not os.path.exists(tmp_dicts_dir):
@@ -177,7 +231,7 @@ class WorkerThread(threading.Thread):
                 task['source'] if task['type'] == 'dict' else json.loads(task['source'])['dict']
             ))
 
-            self._update_task_props({'process_status': "preparedicts"})
+            self.update_task_props({'process_status': "preparedicts"})
             _d("worker", "Create symlinks dicts dir {0}".format(tmp_dicts_dir))
 
             if os.path.exists(tmp_dicts_dir):
@@ -193,7 +247,12 @@ class WorkerThread(threading.Thread):
 
         return tmp_dicts_dir
 
-    def _build_hybride_dict(self, tmp_dicts_dir):
+    def build_hybride_dict(self, tmp_dicts_dir):
+        """
+        Build single big dict for hybride attacks
+        :param tmp_dicts_dir:
+        :return str: path to dict
+        """
         _d("worker", "Compile hybride dict with cmd: ", False)
         path_to_hybride_dict = "{0}/{1}.hybride".format(self.tmp_dir, gen_random_md5())
 
@@ -211,10 +270,17 @@ class WorkerThread(threading.Thread):
 
         return path_to_hybride_dict
 
-    def _build_cmd(self, task, task_is_new, path_to_hashlist):
+    def build_cmd(self, task, task_is_new, path_to_hashlist):
+        """
+        Build shell cmd for hc run
+        :param task: task row
+        :param task_is_new: is task new?
+        :param path_to_hashlist: path to txt hashlist
+        :return:
+        """
         alg_id = self._db.fetch_one(
             "SELECT a.alg_id FROM hashlists h, algs a WHERE h.id = {0} AND h.alg_id = a.id "
-                .format(self.work_task['hashlist_id'])
+            .format(self.work_task['hashlist_id'])
         )
 
         cmd_template = [
@@ -241,7 +307,7 @@ class WorkerThread(threading.Thread):
                 rule_hash = self._db.fetch_one("SELECT hash FROM rules WHERE id = " + str(task['rule']))
                 cmd_template.append("-r {0}".format(self.rules_path + "/" + rule_hash))
 
-            tmp_dicts_dir = self._build_dicts(task_is_new, task)
+            tmp_dicts_dir = self.build_dicts(task_is_new, task)
 
             cmd_to_run = list(cmd_template)
             cmd_to_run.extend(
@@ -254,21 +320,21 @@ class WorkerThread(threading.Thread):
         elif task['type'] == 'mask':
             cmd_to_run = list(cmd_template)
             cmd_to_run.append("-a3")
-            cmd_to_run = self._add_increment_to_cmd(task, cmd_to_run)
-            cmd_to_run = self._add_custom_charsets_to_cmd(task, cmd_to_run)
+            cmd_to_run = self.add_increment_to_cmd(task, cmd_to_run)
+            cmd_to_run = self.add_custom_charsets_to_cmd(task, cmd_to_run)
             cmd_to_run.extend([
                 path_to_hashlist,
                 task['source'],
             ])
         elif task['type'] == 'dictmask' or task['type'] == 'maskdict':
-            tmp_dicts_dir = self._build_dicts(task_is_new, task)
+            tmp_dicts_dir = self.build_dicts(task_is_new, task)
             if task_is_new or not os.path.exists(tmp_dicts_dir):
-                path_to_hybride_dict = self._build_hybride_dict(tmp_dicts_dir)
-                self._update_task_props({'hybride_dict': path_to_hybride_dict})
+                path_to_hybride_dict = self.build_hybride_dict(tmp_dicts_dir)
+                self.update_task_props({'hybride_dict': path_to_hybride_dict})
             else:
                 path_to_hybride_dict = self.work_task['hybride_dict']
 
-            cmd_to_run = self._add_custom_charsets_to_cmd(task, list(cmd_template))
+            cmd_to_run = self.add_custom_charsets_to_cmd(task, list(cmd_template))
 
             cmd_to_run.extend(
                 [
@@ -291,7 +357,7 @@ class WorkerThread(threading.Thread):
             session_name = gen_random_md5()
             path_stdout = "{0}/{1}.output".format(self.outs_path, gen_random_md5())
             out_file = "{0}/{1}.out".format(self.tmp_dir, gen_random_md5())
-            self._update_task_props(
+            self.update_task_props(
                 {
                     'session_name': session_name,
                     'path_stdout': path_stdout,
@@ -305,11 +371,11 @@ class WorkerThread(threading.Thread):
                     'stderr': '',
                 }
             )
-            self._calc_hashes_before()
+            self.calc_hashes_before()
         else:
             path_stdout = self.work_task['path_stdout']
 
-        self._update_task_props({'status': 'work'})
+        self.update_task_props({'status': 'work'})
 
         fh_output = open(path_stdout, 'a')
         if not task_is_new:
@@ -320,14 +386,14 @@ class WorkerThread(threading.Thread):
         task = self.get_task_data_by_id(self.work_task['task_id'])
         _d("worker", "Source task id/source: {0}/{1}/{2}".format(task['id'], task['type'], task['source']))
 
-        self._update_task_props({'process_status': "buildhashlist"})
-        path_to_hashlist = self._make_hashlist()
+        self.update_task_props({'process_status': "buildhashlist"})
+        path_to_hashlist = self.make_hashlist()
         _d("worker", "Hashlist created")
 
-        self._update_task_props({'process_status': "compilecommand"})
+        self.update_task_props({'process_status': "compilecommand"})
         _d("worker", "Compile commands")
 
-        cmd_to_run = self._build_cmd(task, task_is_new, path_to_hashlist)
+        cmd_to_run = self.build_cmd(task, task_is_new, path_to_hashlist)
 
         _d("worker", "Will run: ")
         _d("worker", " ".join(cmd_to_run), prefix=False)
@@ -338,20 +404,20 @@ class WorkerThread(threading.Thread):
         process_stoped = False
         stop_by_priority = False
 
-        self._update_task_props({'process_status': "starting"})
+        self.update_task_props({'process_status': "starting"})
 
         p = Popen(" ".join(cmd_to_run), stdout=PIPE, stdin=PIPE, stderr=PIPE, shell=True)
         while p.poll() is None:
-            self._refresh_work_task()
+            self.refresh_work_task()
 
             if self.work_task['status'] in ['go_stop', 'stop']:
                 _d("worker", "Stop signal ")
                 p.stdin.write('q')
                 process_stoped = True
 
-            if self._not_high_priority():
+            if self.not_high_priority():
                 stop_by_priority = True
-                _d("worker", "Have most priority task: {0}".format(self._not_high_priority()))
+                _d("worker", "Have most priority task: {0}".format(self.not_high_priority()))
                 p.stdin.write('q')
                 process_stoped = True
 
@@ -366,17 +432,17 @@ class WorkerThread(threading.Thread):
 
             if len(rows):
                 if self.work_task['process_status'] != 'work':
-                    self._update_task_props({'process_status': "work"})
-                self._update_hc_status(map(str.strip, rows[-1]))
+                    self.update_task_props({'process_status': "work"})
+                self.update_hc_status(map(str.strip, rows[-1]))
 
             time.sleep(self.status_time/2)
 
         fh_output.write(p.stdout.read())
-        self._update_task_props({'work_time': int(self.work_task['work_time']) + (int(time.time())-stime)})
+        self.update_task_props({'work_time': int(self.work_task['work_time']) + (int(time.time()) - stime)})
 
         stderr = p.stderr.read()
         if len(stderr.strip()):
-            self._update_task_props({'stderr': stderr.strip()})
+            self.update_task_props({'stderr': stderr.strip()})
             fh_output.write('\n' + stderr)
 
         fh_output.close()
@@ -384,17 +450,16 @@ class WorkerThread(threading.Thread):
         _d("worker", "Task done, wait load cracked hashes, worker go to next task")
 
         _d("worker", "Change task status")
-        self._change_task_status(stop_by_priority, process_stoped)
+        self.change_task_status(stop_by_priority, process_stoped)
 
         _d("worker", "Clean file with stdout")
-        self._clean_stdout_file()
+        self.clean_stdout_file()
 
         if self.work_task['status'] == 'done' and \
                 len(self.work_task['hybride_dict']) and \
                 os.path.exists(self.work_task['hybride_dict']):
             os.remove(self.work_task['hybride_dict'])
-            self._update_task_props({'hybride_dict': ''})
+            self.update_task_props({'hybride_dict': ''})
 
         _d("worker", "Done\n")
         self.done = True
-

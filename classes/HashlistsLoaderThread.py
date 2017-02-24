@@ -15,21 +15,21 @@ import os
 import subprocess
 import shutil
 
-from subprocess import Popen, PIPE, check_output
 from classes.Registry import Registry
 from classes.Factory import Factory
-from libs.common import _d, file_lines_count, gen_random_md5, md5, update_hashlist_counts
-from classes.Database import Database
 from classes.HbsException import HbsException
+from libs.common import _d, file_lines_count, gen_random_md5, md5, update_hashlist_counts
 
 
 class HashlistsLoaderThread(threading.Thread):
-    _current_hashlist_id = None
+    """ Thread for load hashlists """
+    current_hashlist_id = None
     daemon = True
-    TIMEOUT_PER_HASHLIST_CHECK = 1
+    delay_per_check = None
     available = True
 
     def __init__(self):
+        """ Initialization """
         threading.Thread.__init__(self)
         config = Registry().get('config')
 
@@ -39,28 +39,59 @@ class HashlistsLoaderThread(threading.Thread):
         self.rules_path = config['main']['rules_path']
         self.path_to_hc = config['main']['path_to_hc']
         self.hc_bin = config['main']['hc_bin']
+        self.delay_per_check = int(config['main']['hashlists_loader_delay_per_try'])
 
         self._db = Factory().new_db_connect()
 
     def get_current_hashlist_id(self):
-        if self._current_hashlist_id is None:
+        """
+        Get current hashlist id of exception if it not set
+        :exception HbsException:
+        :return int:
+        """
+        if self.current_hashlist_id is None:
             raise HbsException("Current hashlist not set")
-        return self._current_hashlist_id
+        return self.current_hashlist_id
 
-    def _update_status(self, status):
-        self._update_hashlist_field('status', status)
+    def update_status(self, status):
+        """
+        Update hashlist status
+        :param status:
+        :return:
+        """
+        self.update_hashlist_field('status', status)
 
-    def _get_current_hashlist_data(self):
+    def get_current_hashlist_data(self):
+        """
+        Get row data of current hashlist
+        :return dict:
+        """
         return self._db.fetch_row("SELECT * FROM hashlists WHERE id = {0}".format(self.get_current_hashlist_id()))
 
-    def _parsed_flag(self, parsed):
-        self._update_hashlist_field('parsed', parsed)
+    def parsed_flag(self, parsed):
+        """
+        Set flag 'parsed' to current hashlist
+        :param parsed:
+        :return:
+        """
+        self.update_hashlist_field('parsed', parsed)
 
-    def _update_hashlist_field(self, field, value):
+    def update_hashlist_field(self, field, value):
+        """
+        Update one hashlist field
+        :param field:
+        :param value:
+        :return:
+        """
         self._db.update("hashlists", {field: value}, "id = {0}".format(self.get_current_hashlist_id()))
 
-    def _sort_file(self, hashlist):
-        self._update_status("sorting")
+    def sort_file(self, hashlist):
+        """
+        Sort hashlist`s txt file with duplicates delete
+        :param hashlist: hashlists row
+        :return:
+        """
+        self.update_status("sorting")
 
         sorted_path = self.tmp_dir + "/" + gen_random_md5()
         subprocess.check_output(
@@ -71,8 +102,14 @@ class HashlistsLoaderThread(threading.Thread):
                                                                       file_lines_count(sorted_path)))
         return sorted_path
 
-    def _sorted_file_to_db_file(self, sorted_file_path, hashlist):
-        self._update_status("preparedb")
+    def sorted_file_to_db_file(self, sorted_file_path, hashlist):
+        """
+        Convert sorted txt hashlist to in-db file
+        :param sorted_file_path:
+        :param hashlist: hashlist data
+        :return:
+        """
+        self.update_status("preparedb")
         _d("hashlist_loader", "Prepare file for DB load")
 
         errors_lines = ""
@@ -82,25 +119,25 @@ class HashlistsLoaderThread(threading.Thread):
 
         fh_sorted = open(sorted_file_path)
         for _line in fh_sorted:
-            hash = None
+            _hash = None
             _line = _line.strip()
             if int(hashlist['have_salts']):
                 if _line.count(hashlist['delimiter']):
-                    hash = _line[:_line.index(hashlist['delimiter'])]
+                    _hash = _line[:_line.index(hashlist['delimiter'])]
                     salt = _line[_line.index(hashlist['delimiter']) + len(hashlist['delimiter']):]
                 else:
                     errors_lines += _line + "\n"
             else:
-                hash = _line
+                _hash = _line
                 salt = ""
 
-            if hash is not None:
+            if _hash is not None:
                 fh_to_db.write(
                     '"{0}","{1}","{2}","{3}"\n'.format(
                         hashlist['id'],
-                        hash.replace('\\', '\\\\').replace('"', '\\"'),
+                        _hash.replace('\\', '\\\\').replace('"', '\\"'),
                         salt.replace('\\', '\\\\').replace('"', '\\"'),
-                        md5(hash + ":" + salt) if len(salt) else md5(hash)
+                        md5(_hash + ":" + salt) if len(salt) else md5(_hash)
                     )
                 )
 
@@ -110,12 +147,18 @@ class HashlistsLoaderThread(threading.Thread):
         os.remove(sorted_file_path)
 
         if len(errors_lines):
-            self._update_hashlist_field("errors", errors_lines)
+            self.update_hashlist_field("errors", errors_lines)
 
         return put_in_db_path
 
-    def _load_file_in_db(self, file_path, hashlist):
-        self._update_status('putindb')
+    def load_file_in_db(self, file_path, hashlist):
+        """
+        Import in-db file in database with mysqlimport util
+        :param file_path:
+        :param hashlist: hashlist data
+        :return:
+        """
+        self.update_status('putindb')
         _d("hashlist_loader", "Data go to DB")
 
         if os.path.exists(self.tmp_dir + "/hashes"):
@@ -124,22 +167,28 @@ class HashlistsLoaderThread(threading.Thread):
         hashes_file_path = self.tmp_dir + "/hashes"
         shutil.move(file_path, hashes_file_path)
 
-        importcmd = "mysqlimport --lock-tables --user {0} -p{1} --local --columns hashlist_id,hash,salt,summ --fields-enclosed-by '\"'" \
-        " --fields-terminated-by ',' --fields-escaped-by \"\\\\\" {2} {3}"\
-            .format(
-            Registry().get('config')['main']['mysql_user'],
-            Registry().get('config')['main']['mysql_pass'],
-            Registry().get('config')['main']['mysql_dbname'],
-            self.tmp_dir + "/hashes"
-        )
+        importcmd = "mysqlimport --lock-tables --user {0} -p{1} --local " \
+                    "--columns hashlist_id,hash,salt,summ --fields-enclosed-by '\"'" \
+                    " --fields-terminated-by ',' --fields-escaped-by \"\\\\\" {2} {3}"\
+                    .format(
+                        Registry().get('config')['main']['mysql_user'],
+                        Registry().get('config')['main']['mysql_pass'],
+                        Registry().get('config')['main']['mysql_dbname'],
+                        self.tmp_dir + "/hashes"
+                    )
 
         subprocess.check_output(importcmd, shell=True)
 
         os.remove(hashes_file_path)
         os.remove(hashlist['tmp_path'])
 
-    def _find_similar_found_hashes(self, hashlist):
-        self._update_status('searchfound')
+    def find_similar_found_hashes(self, hashlist):
+        """
+        Get all cracked hashes of same alg and search them in current hashlist
+        :param hashlist: hashlist data
+        :return:
+        """
+        self.update_status('searchfound')
         _d("hashlist_loader", "Search already found hashes")
 
         similar_hashes = self._db.fetch_all(
@@ -162,41 +211,48 @@ class HashlistsLoaderThread(threading.Thread):
                     "id = " + str(hash_id)
                 )
 
-    def _get_hashlist_for_load(self):
-        self._current_hashlist_id = self._db.fetch_one("SELECT id FROM hashlists WHERE parsed = 0 AND status='wait' ORDER BY id ASC LIMIT 1")
-        return self._current_hashlist_id
+    def get_hashlist_for_load(self):
+        """
+        Are we have hashlist ready to parse?
+        :return int: hashlist id
+        """
+        self.current_hashlist_id = self._db.fetch_one(
+            "SELECT id FROM hashlists WHERE parsed = 0 AND status='wait' ORDER BY id ASC LIMIT 1")
+        return self.current_hashlist_id
 
     def run(self):
+        """ Run thread """
         while self.available:
-            if self._get_hashlist_for_load():
-                self._update_status("parsing")
+            if self.get_hashlist_for_load():
+                self.update_status("parsing")
 
-                hashlist = self._get_current_hashlist_data()
+                hashlist = self.get_current_hashlist_data()
 
-                _d("hashlist_loader", "Found hashlist #{0}/{1} for work".format(self._current_hashlist_id, hashlist['name']))
+                _d("hashlist_loader", "Found hashlist #{0}/{1} for work".format(
+                    self.current_hashlist_id, hashlist['name']))
                 if not len(hashlist['tmp_path']) or not os.path.exists(hashlist['tmp_path']):
-                    _d("hashlist_loader", "ERR: path not exists #{0}/'{1}'".format(self._current_hashlist_id, hashlist['tmp_path']))
-                    self._update_status("errpath")
-                    self._parsed_flag(1)
+                    _d("hashlist_loader", "ERR: path not exists #{0}/'{1}'".format(
+                        self.current_hashlist_id, hashlist['tmp_path']))
+
+                    self.update_status("errpath")
+                    self.parsed_flag(1)
                     continue
 
-                sorted_path = self._sort_file(hashlist)
+                sorted_path = self.sort_file(hashlist)
 
-                put_in_db_path = self._sorted_file_to_db_file(sorted_path, hashlist)
+                put_in_db_path = self.sorted_file_to_db_file(sorted_path, hashlist)
 
-                self._load_file_in_db(put_in_db_path, hashlist)
+                self.load_file_in_db(put_in_db_path, hashlist)
 
-                self._find_similar_found_hashes(hashlist)
+                self.find_similar_found_hashes(hashlist)
 
                 update_hashlist_counts(self._db, hashlist['id'])
 
-                self._parsed_flag(1)
-                self._update_status('ready')
-                self._update_hashlist_field('tmp_path', '')
+                self.parsed_flag(1)
+                self.update_status('ready')
+                self.update_hashlist_field('tmp_path', '')
 
-                _d("hashlist_loader", "Work for hashlist {0}/{1} done".format(self._current_hashlist_id, hashlist['name']))
+                _d("hashlist_loader", "Work for hashlist {0}/{1} done".format(
+                    self.current_hashlist_id, hashlist['name']))
 
-            time.sleep(self.TIMEOUT_PER_HASHLIST_CHECK)
-        pass
-
-
+            time.sleep(self.delay_per_check)

@@ -14,7 +14,7 @@ import time
 
 from classes.Registry import Registry
 from classes.Factory import Factory
-from classes.FinderInsidePro import FinderInsidePro
+from classes.FinderInsidePro import FinderInsidePro, FinderInsideProException
 from libs.common import _d, gen_random_md5, md5
 
 class FinderInsideProThread(threading.Thread):
@@ -37,7 +37,7 @@ class FinderInsideProThread(threading.Thread):
 
         self.finder = FinderInsidePro(config['main']['finder_key'])
 
-    def _is_alg_in_parse(self, alg_id):
+    def is_alg_in_parse(self, alg_id):
         """
         Check is current alg now in parse or wait parse (work tasks with this alg)
         :param alg_id:
@@ -50,7 +50,7 @@ class FinderInsideProThread(threading.Thread):
         )
         return bool(result)
 
-    def _get_ready_common_hashlists(self):
+    def get_ready_common_hashlists(self):
         """
          Return lists of common hashlists ready for Finder work
         :return list: List of hashes row
@@ -63,7 +63,7 @@ class FinderInsideProThread(threading.Thread):
             )
         )
 
-    def _make_hashlist(self, hashlist_id):
+    def make_hashlist(self, hashlist_id):
         """
         Build text file with uncracked hashes by hashlist id
         :param hashlist_id:
@@ -86,7 +86,7 @@ class FinderInsideProThread(threading.Thread):
 
         return path_to_hashlist
 
-    def _put_found_hashes_in_db(self, alg_id, hashes):
+    def put_found_hashes_in_db(self, alg_id, hashes):
         """
         Put found by Finder hashes in db
         :param alg_id:
@@ -110,14 +110,14 @@ class FinderInsideProThread(threading.Thread):
     def run(self):
         """ Run thread """
         while self.available:
-            hashlists = self._get_ready_common_hashlists()
+            hashlists = self.get_ready_common_hashlists()
             for hashlist in hashlists:
                 found_count = 0
                 all_count = 0
-                if self._is_alg_in_parse(hashlist['alg_id']):
+                if self.is_alg_in_parse(hashlist['alg_id']):
                     continue
 
-                path_to_hashlist_file = self._make_hashlist(hashlist['id'])
+                path_to_hashlist_file = self.make_hashlist(hashlist['id'])
 
                 hashes_to_finder = []
                 fh = open(path_to_hashlist_file, 'r')
@@ -132,18 +132,24 @@ class FinderInsideProThread(threading.Thread):
                     if not len(hashes_to_finder) % FinderInsidePro.hashes_per_once_limit:
                         all_count += len(hashes_to_finder)
 
-                        found_hashes = self.finder.search_hashes(hashes_to_finder)
+                        try:
+                            found_hashes = self.finder.search_hashes(hashes_to_finder)
+                        except FinderInsideProException as ex:
+                            if ex.extype == FinderInsideProException.TYPE_SMALL_REMAIN:
+                                _d("finderinsidepro", str(ex))
+                            else:
+                                raise ex
 
                         found_count += len(found_hashes)
 
-                        self._put_found_hashes_in_db(hashlist['alg_id'], found_hashes)
+                        self.put_found_hashes_in_db(hashlist['alg_id'], found_hashes)
                         hashes_to_finder = []
 
                 if len(hashes_to_finder):
                     all_count += len(hashes_to_finder)
                     found_hashes = self.finder.search_hashes(hashes_to_finder)
                     found_count += len(found_hashes)
-                    self._put_found_hashes_in_db(hashlist['alg_id'], found_hashes)
+                    self.put_found_hashes_in_db(hashlist['alg_id'], found_hashes)
 
                 _d("finderinsidepro", "For hashlist {0} with alg {1} found {2} from {3}".format(
                     hashlist['id'], hashlist['alg_id'], found_count, all_count
