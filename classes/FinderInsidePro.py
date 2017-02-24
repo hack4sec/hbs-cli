@@ -15,7 +15,7 @@ import requests
 from lxml import etree
 
 
-class FinderInsideProException(BaseException):
+class FinderInsideProException(Exception):
     """ Exeptions class for finder.insidepro.com API """
     TYPE_SESSION_IS_WRONG = "0"
     TYPE_KEY_IS_WRONG = "1"

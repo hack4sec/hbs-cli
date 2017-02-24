@@ -9,5 +9,5 @@ Copyright (c) Anton Kuzmin <http://anton-kuzmin.ru> (ru) <http://anton-kuzmin.pr
 Exceptions class
 """
 
-class HbsException (BaseException):
+class HbsException (Exception):
     pass
