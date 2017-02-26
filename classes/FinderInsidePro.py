@@ -69,7 +69,13 @@ class FinderInsidePro(object):
         """
         response = requests.get(url) if \
             not post_data else \
-            requests.post(url, data=post_data, headers={'Content-Type': 'application/x-www-form-urlencoded'})
+            requests.post(
+                url,
+                data=post_data,
+                headers={
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                    'User-Agent': 'HBS Cli'
+                })
 
         if response.status_code == 403:
             raise FinderInsideProException(
@@ -92,10 +98,14 @@ class FinderInsidePro(object):
         except (etree.XMLSyntaxError, ValueError) as ex:
             raise FinderInsideProException("XML parse error with '{0}' data and str '{1}'".format(data, str(ex)))
 
-    def create_session(self):
-        """ Create new API session """
+    def create_session(self, hc_alg_id):
+        """
+        Create new API session
+        :param hc_alg_id:
+        :return:
+        """
         data = self.get_xml_from_server(
-            "http://finder.insidepro.com/api/session/start?apikey={0}&type=search".format(self.key))
+            "http://finder.insidepro.com/api/session/start?apikey={0}&alg={1}&type=search".format(self.key, hc_alg_id))
         try:
             xml = etree.fromstring(data.encode('utf-8'))
             self.session_id = xml.xpath('//data/session_id')[0].text
@@ -126,7 +136,7 @@ class FinderInsidePro(object):
 
         return result
 
-    def search_hashes(self, hashes):
+    def search_hashes(self, hashes, hc_alg_id):
         """
         Method send request to server for hashes search and return hashes list with found passwords (result of
         parse_and_fill_hashes_from_xml() method).
@@ -134,6 +144,7 @@ class FinderInsidePro(object):
         :exception FinderInsideProException: If remain hashes count less minimal hashes limit per once
         :exception FinderInsideProException: If client can`t create session twice
         :param hashes: List of hashes which was sended to server. Format: [{'hash': '...', 'salt': '...'}, ...]
+        :param hc_alg_id: hashcat alg_id
         :return list: List of found hashes with hash, salt and password keys (and with other fields if they was
         in 'hashes' param). Format: [{'hash': '...', 'salt': '...', 'password': '...'}, ...]
         """
@@ -142,7 +153,7 @@ class FinderInsidePro(object):
                 FinderInsideProException.EXCEPTION_TEXT_HASHES_COUNT_LIMIT.format(self.hashes_per_once_limit))
 
         if not len(self.session_id):
-            self.create_session()
+            self.create_session(hc_alg_id)
 
         if self.get_remain_limit() < self.hashes_per_once_limit:
             raise FinderInsideProException(
@@ -162,7 +173,7 @@ class FinderInsidePro(object):
             )
         except FinderInsideProException as ex:
             if ex.extype == FinderInsideProException.TYPE_SESSION_IS_WRONG:
-                self.create_session()
+                self.create_session(hc_alg_id)
 
             try:
                 xml = self.get_xml_from_server(

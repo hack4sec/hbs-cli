@@ -117,6 +117,8 @@ class FinderInsideProThread(threading.Thread):
                 if self.is_alg_in_parse(hashlist['alg_id']):
                     continue
 
+                hc_alg_id = self._db.fetch_one("SELECT alg_id FROM algs WHERE id = {0}".format(hashlist['alg_id']))
+
                 path_to_hashlist_file = self.make_hashlist(hashlist['id'])
 
                 hashes_to_finder = []
@@ -133,10 +135,11 @@ class FinderInsideProThread(threading.Thread):
                         all_count += len(hashes_to_finder)
 
                         try:
-                            found_hashes = self.finder.search_hashes(hashes_to_finder)
+                            found_hashes = self.finder.search_hashes(hashes_to_finder, hc_alg_id)
                         except FinderInsideProException as ex:
                             if ex.extype == FinderInsideProException.TYPE_SMALL_REMAIN:
                                 _d("finderinsidepro", str(ex))
+                                break
                             else:
                                 raise ex
 
@@ -147,7 +150,14 @@ class FinderInsideProThread(threading.Thread):
 
                 if len(hashes_to_finder):
                     all_count += len(hashes_to_finder)
-                    found_hashes = self.finder.search_hashes(hashes_to_finder)
+                    try:
+                        found_hashes = self.finder.search_hashes(hashes_to_finder, hc_alg_id)
+                    except FinderInsideProException as ex:
+                        if ex.extype == FinderInsideProException.TYPE_SMALL_REMAIN:
+                            _d("finderinsidepro", str(ex))
+                            break
+                        else:
+                            raise ex
                     found_count += len(found_hashes)
                     self.put_found_hashes_in_db(hashlist['alg_id'], found_hashes)
 

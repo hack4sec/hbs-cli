@@ -49,7 +49,7 @@ class Test_FinderInsidePro(CommonUnit):
     def test_create_session(self):
         """ Test on session create """
         finder = FinderInsidePro(self.test_key)
-        session_id = finder.create_session()
+        session_id = finder.create_session(2811)
         assert isinstance(session_id, str)
         assert session_id == finder.session_id
         assert len(session_id)
@@ -64,7 +64,7 @@ class Test_FinderInsidePro(CommonUnit):
         for _ in range(0, 1010):
             test_hashes.append(1)
         with pytest.raises(FinderInsideProException) as ex:
-            finder.search_hashes(test_hashes)
+            finder.search_hashes(test_hashes, 2811)
         assert FinderInsideProException.EXCEPTION_TEXT_HASHES_COUNT_LIMIT.format(
             FinderInsidePro.hashes_per_once_limit) in str(ex)
         assert ex.value.extype is None
@@ -75,10 +75,10 @@ class Test_FinderInsidePro(CommonUnit):
         ]
         test_data = [{'hash': '0065ffe5f9e4e5996c2c3f52f81c6e31', 'salt': 'cB6Ar', 'password': 'y0007171'},]
 
-        assert test_data == finder.search_hashes(hashes)
+        assert test_data == finder.search_hashes(hashes, 2811)
 
         finder.session_id = 'WRONG'
-        assert test_data == finder.search_hashes(hashes)
+        assert test_data == finder.search_hashes(hashes, 2811)
 
     def test_parse_and_fill_hashes_from_xml(self):
         """ Test by xml-response from finder parsing method """
