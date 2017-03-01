@@ -19,8 +19,10 @@ import json
 from subprocess import Popen, PIPE, check_output
 from classes.Registry import Registry
 from classes.HbsException import HbsException
+from classes.Logger import Logger
+from classes.Factory import Factory
 
-from libs.common import _d, gen_random_md5
+from libs.common import gen_random_md5
 
 class WorkerThread(threading.Thread):
     """ Main work thread - run hc, control work, etc """
@@ -42,7 +44,7 @@ class WorkerThread(threading.Thread):
         """
         threading.Thread.__init__(self)
         self.work_task = work_task
-        self._db = Registry().get('db')
+        self._db = Factory().new_db_connect()
 
         config = Registry().get('config')
         self.tmp_dir = config['main']['tmp_dir']
@@ -144,7 +146,8 @@ class WorkerThread(threading.Thread):
              "FROM `hashes` WHERE hashlist_id={0} AND cracked = 0")
             .format(
                 self.work_task['hashlist_id']
-            )
+            ),
+            True
         )
         for _hash in res:
             fh.write(_hash[0] + "\n")
@@ -232,10 +235,10 @@ class WorkerThread(threading.Thread):
             ))
 
             self.update_task_props({'process_status': "preparedicts"})
-            _d("worker", "Create symlinks dicts dir {0}".format(tmp_dicts_dir))
+            Registry().get('logger').log("worker", "Create symlinks dicts dir {0}".format(tmp_dicts_dir))
 
             if os.path.exists(tmp_dicts_dir):
-                _d("worker", "Remove old symlinks dicts dir {0}".format(tmp_dicts_dir))
+                Registry().get('logger').log("worker", "Remove old symlinks dicts dir {0}".format(tmp_dicts_dir))
                 shutil.rmtree(tmp_dicts_dir)
             os.mkdir(tmp_dicts_dir)
 
@@ -253,20 +256,19 @@ class WorkerThread(threading.Thread):
         :param tmp_dicts_dir:
         :return str: path to dict
         """
-        _d("worker", "Compile hybride dict with cmd: ", False)
         path_to_hybride_dict = "{0}/{1}.hybride".format(self.tmp_dir, gen_random_md5())
 
         cat_cmd = "cat {0}/* > {1}-unsorted".format(tmp_dicts_dir, path_to_hybride_dict)
-        _d("worker", "'{0}'".format(cat_cmd), prefix=False)
+        Registry().get('logger').log("worker", "Compile hybride dict by cmd: \n{0}".format(cat_cmd))
         check_output(cat_cmd, shell=True)
 
         sort_cmd = "sort {0}-unsorted > {0}".format(path_to_hybride_dict)
-        _d("worker", "'{0}'".format(sort_cmd), prefix=False)
+        Registry().get('logger').log("worker", "Sort dict by cmd: \n{0}".format(sort_cmd))
         check_output(sort_cmd, shell=True)
 
         os.remove("{0}-unsorted".format(path_to_hybride_dict))
 
-        _d("worker", "Cat and sort done".format(sort_cmd))
+        Registry().get('logger').log("worker", "Cat and sort done".format(sort_cmd))
 
         return path_to_hybride_dict
 
@@ -299,7 +301,7 @@ class WorkerThread(threading.Thread):
 
         cmd_template.append("--session={0}".format(self.work_task['session_name']))
         if not task_is_new:
-            _d("worker", "Restore {0}".format(self.work_task['session_name']))
+            Registry().get('logger').log("worker", "Restore {0}".format(self.work_task['session_name']))
             cmd_template.append("--restore")
 
         if task['type'] == 'dict':
@@ -350,7 +352,7 @@ class WorkerThread(threading.Thread):
 
     def run(self):
         """ Start method of thread """
-        _d("worker", "Run thread with work_task id: {0}".format(self.work_task['id']))
+        Registry().get('logger').log("worker", "Run thread with work_task id: {0}".format(self.work_task['id']))
 
         task_is_new = not len(self.work_task['session_name'])
         if task_is_new:
@@ -384,19 +386,18 @@ class WorkerThread(threading.Thread):
         os.chdir(self.path_to_hc)
 
         task = self.get_task_data_by_id(self.work_task['task_id'])
-        _d("worker", "Source task id/source: {0}/{1}/{2}".format(task['id'], task['type'], task['source']))
+        Registry().get('logger').log("worker", "Source task id/source: {0}/{1}/{2}".format(task['id'], task['type'], task['source']))
 
         self.update_task_props({'process_status': "buildhashlist"})
         path_to_hashlist = self.make_hashlist()
-        _d("worker", "Hashlist created")
+        Registry().get('logger').log("worker", "Hashlist created")
 
         self.update_task_props({'process_status': "compilecommand"})
-        _d("worker", "Compile commands")
+        Registry().get('logger').log("worker", "Compile command")
 
         cmd_to_run = self.build_cmd(task, task_is_new, path_to_hashlist)
 
-        _d("worker", "Will run: ")
-        _d("worker", " ".join(cmd_to_run), prefix=False)
+        Registry().get('logger').log("worker", "Will run: " + " ".join(cmd_to_run))
         fh_output.write(" ".join(cmd_to_run) + "\n")
 
         stime = int(time.time())
@@ -411,13 +412,13 @@ class WorkerThread(threading.Thread):
             self.refresh_work_task()
 
             if self.work_task['status'] in ['go_stop', 'stop']:
-                _d("worker", "Stop signal ")
+                Registry().get('logger').log("worker", "Stop signal ")
                 p.stdin.write('q')
                 process_stoped = True
 
             if self.not_high_priority():
                 stop_by_priority = True
-                _d("worker", "Have most priority task: {0}".format(self.not_high_priority()))
+                Registry().get('logger').log("worker", "Have most priority task: {0}".format(self.not_high_priority()))
                 p.stdin.write('q')
                 process_stoped = True
 
@@ -447,12 +448,12 @@ class WorkerThread(threading.Thread):
 
         fh_output.close()
 
-        _d("worker", "Task done, wait load cracked hashes, worker go to next task")
+        Registry().get('logger').log("worker", "Task done, wait load cracked hashes, worker go to next task")
 
-        _d("worker", "Change task status")
+        Registry().get('logger').log("worker", "Change task status")
         self.change_task_status(stop_by_priority, process_stoped)
 
-        _d("worker", "Clean file with stdout")
+        Registry().get('logger').log("worker", "Clean file with stdout")
         self.clean_stdout_file()
 
         if self.work_task['status'] == 'done' and \
@@ -461,5 +462,5 @@ class WorkerThread(threading.Thread):
             os.remove(self.work_task['hybride_dict'])
             self.update_task_props({'hybride_dict': ''})
 
-        _d("worker", "Done\n")
+        Registry().get('logger').log("worker", "Done\n")
         self.done = True

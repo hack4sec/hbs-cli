@@ -15,7 +15,8 @@ import time
 from classes.Registry import Registry
 from classes.Factory import Factory
 from classes.FinderInsidePro import FinderInsidePro, FinderInsideProException
-from libs.common import _d, gen_random_md5, md5
+from classes.Logger import Logger
+from libs.common import gen_random_md5, md5
 
 class FinderInsideProThread(threading.Thread):
     """ Thread for automated check hashes on finder.insidepro.com """
@@ -78,7 +79,8 @@ class FinderInsideProThread(threading.Thread):
             .format(
                 hashlist_id,
                 self.UNIQUE_DELIMITER
-            )
+            ),
+            True
         )
         for _hash in res:
             fh.write(_hash[0] + "\n")
@@ -138,7 +140,7 @@ class FinderInsideProThread(threading.Thread):
                             found_hashes = self.finder.search_hashes(hashes_to_finder, hc_alg_id)
                         except FinderInsideProException as ex:
                             if ex.extype == FinderInsideProException.TYPE_SMALL_REMAIN:
-                                _d("finderinsidepro", str(ex))
+                                Registry().get('logger').log("finderinsidepro", str(ex))
                                 break
                             else:
                                 raise ex
@@ -154,14 +156,14 @@ class FinderInsideProThread(threading.Thread):
                         found_hashes = self.finder.search_hashes(hashes_to_finder, hc_alg_id)
                     except FinderInsideProException as ex:
                         if ex.extype == FinderInsideProException.TYPE_SMALL_REMAIN:
-                            _d("finderinsidepro", str(ex))
+                            Registry().get('logger').log("finderinsidepro", str(ex))
                             break
                         else:
                             raise ex
                     found_count += len(found_hashes)
                     self.put_found_hashes_in_db(hashlist['alg_id'], found_hashes)
 
-                _d("finderinsidepro", "For hashlist {0} with alg {1} found {2} from {3}".format(
+                Registry().get('logger').log("finderinsidepro", "For hashlist {0} with alg {1} found {2} from {3}".format(
                     hashlist['id'], hashlist['alg_id'], found_count, all_count
                 ))
 

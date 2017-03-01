@@ -18,7 +18,8 @@ import shutil
 from classes.Registry import Registry
 from classes.Factory import Factory
 from classes.HbsException import HbsException
-from libs.common import _d, file_lines_count, gen_random_md5, md5, update_hashlist_counts
+from classes.Logger import Logger
+from libs.common import file_lines_count, gen_random_md5, md5, update_hashlist_counts
 
 
 class HashlistsLoaderThread(threading.Thread):
@@ -98,8 +99,8 @@ class HashlistsLoaderThread(threading.Thread):
             "sort -u {0} > {1}".format(hashlist['tmp_path'], sorted_path),
             shell=True
         )
-        _d("hashlist_loader", "Before sort - {0}, after - {1}".format(file_lines_count(hashlist['tmp_path']),
-                                                                      file_lines_count(sorted_path)))
+        Registry().get('logger').log("hashlist_loader", "Before sort - {0}, after - {1}".format(file_lines_count(hashlist['tmp_path']),
+                                                                              file_lines_count(sorted_path)))
         return sorted_path
 
     def sorted_file_to_db_file(self, sorted_file_path, hashlist):
@@ -110,7 +111,7 @@ class HashlistsLoaderThread(threading.Thread):
         :return:
         """
         self.update_status("preparedb")
-        _d("hashlist_loader", "Prepare file for DB load")
+        Registry().get('logger').log("hashlist_loader", "Prepare file for DB load")
 
         errors_lines = ""
 
@@ -159,7 +160,7 @@ class HashlistsLoaderThread(threading.Thread):
         :return:
         """
         self.update_status('putindb')
-        _d("hashlist_loader", "Data go to DB")
+        Registry().get('logger').log("hashlist_loader", "Data go to DB")
 
         if os.path.exists(self.tmp_dir + "/hashes"):
             os.remove(self.tmp_dir + "/hashes")
@@ -189,7 +190,7 @@ class HashlistsLoaderThread(threading.Thread):
         :return:
         """
         self.update_status('searchfound')
-        _d("hashlist_loader", "Search already found hashes")
+        Registry().get('logger').log("hashlist_loader", "Search already found hashes")
 
         similar_hashes = self._db.fetch_all(
             "SELECT hash, salt, password, summ FROM `hashes` h, hashlists hl "
@@ -228,10 +229,10 @@ class HashlistsLoaderThread(threading.Thread):
 
                 hashlist = self.get_current_hashlist_data()
 
-                _d("hashlist_loader", "Found hashlist #{0}/{1} for work".format(
+                Registry().get('logger').log("hashlist_loader", "Found hashlist #{0}/{1} for work".format(
                     self.current_hashlist_id, hashlist['name']))
                 if not len(hashlist['tmp_path']) or not os.path.exists(hashlist['tmp_path']):
-                    _d("hashlist_loader", "ERR: path not exists #{0}/'{1}'".format(
+                    Registry().get('logger').log("hashlist_loader", "ERR: path not exists #{0}/'{1}'".format(
                         self.current_hashlist_id, hashlist['tmp_path']))
 
                     self.update_status("errpath")
@@ -239,9 +240,15 @@ class HashlistsLoaderThread(threading.Thread):
                     continue
 
                 sorted_path = self.sort_file(hashlist)
-
+                import pprint
+                pprint.pprint(
+                    sorted_path
+                )
                 put_in_db_path = self.sorted_file_to_db_file(sorted_path, hashlist)
-
+                import pprint
+                pprint.pprint(
+                    put_in_db_path
+                )
                 self.load_file_in_db(put_in_db_path, hashlist)
 
                 self.find_similar_found_hashes(hashlist)
@@ -252,7 +259,7 @@ class HashlistsLoaderThread(threading.Thread):
                 self.update_status('ready')
                 self.update_hashlist_field('tmp_path', '')
 
-                _d("hashlist_loader", "Work for hashlist {0}/{1} done".format(
+                Registry().get('logger').log("hashlist_loader", "Work for hashlist {0}/{1} done".format(
                     self.current_hashlist_id, hashlist['name']))
 
             time.sleep(self.delay_per_check)

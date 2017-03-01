@@ -16,6 +16,10 @@ import configparser
 from classes.Registry import Registry
 from classes.Database import Database
 
+class LoggerMock(object):
+    """ Mock for logger class """
+    def log(self, module, message):
+        pass
 
 class CommonUnit(object):
     """ Common class for unit tests """
@@ -28,6 +32,8 @@ class CommonUnit(object):
         config = configparser.ConfigParser()
         config.read(CURPATH + 'config.ini')
         Registry().set('config', config)
+
+        Registry().set('logger', LoggerMock())
 
         db = Database(
             config['main']['mysql_host'],
@@ -49,6 +55,7 @@ class CommonUnit(object):
         self.db.q("TRUNCATE TABLE tasks")
         self.db.q("TRUNCATE TABLE tasks_groups")
         self.db.q("TRUNCATE TABLE task_works")
+        self.db.q("TRUNCATE TABLE logs")
 
         self.db.update("algs", {'finder_insidepro_allowed': 0}, "id")
 

@@ -14,7 +14,8 @@ import time
 
 from classes.Registry import Registry
 from classes.Factory import Factory
-from libs.common import _d, gen_random_md5
+from classes.Logger import Logger
+from libs.common import gen_random_md5
 
 
 class HashlistsByAlgLoaderThread(threading.Thread):
@@ -122,7 +123,7 @@ class HashlistsByAlgLoaderThread(threading.Thread):
         hashes_by_algs_count = self.hashes_count_by_algs()
         for alg_id in hashes_by_algs_count:
             if self.is_alg_in_parse(alg_id):
-                _d(
+                Registry().get('logger').log(
                     "hashlist_common_loader",
                     "Skip alg, it parsing or wait parse #{0}".format(
                         alg_id
@@ -133,7 +134,7 @@ class HashlistsByAlgLoaderThread(threading.Thread):
             hashlist_id = self.get_common_hashlist_id_by_alg(alg_id)
             if hashlist_id == self.get_current_work_hashlist() or \
                             self.get_hashlist_status(hashlist_id) != 'ready':
-                _d(
+                Registry().get('logger').log(
                     "hashlist_common_loader",
                     "Skip it, it in work or not ready #{0}/{1}/{2}".format(
                         hashlist_id,
@@ -148,7 +149,7 @@ class HashlistsByAlgLoaderThread(threading.Thread):
             if hashes_count_in_hashlist == hashes_by_algs_count[alg_id]:
                 continue
 
-            _d(
+            Registry().get('logger').log(
                 "hashlist_common_loader",
                 "Build list for alg #{0} ({1} vs {2})".format(
                     alg_id,
@@ -180,7 +181,8 @@ class HashlistsByAlgLoaderThread(threading.Thread):
                 self.DELIMITER, alg_id)
             if self.is_alg_have_salts(alg_id) else
             "SELECT h.hash FROM hashes h, hashlists hl "
-            "WHERE hl.id = h.hashlist_id AND hl.alg_id = {0} AND hl.common_by_alg = 0 AND h.cracked = 0".format(alg_id)
+            "WHERE hl.id = h.hashlist_id AND hl.alg_id = {0} AND hl.common_by_alg = 0 AND h.cracked = 0".format(alg_id),
+            True
         )
 
         tmp_path = self.tmp_dir + "/" + gen_random_md5()
@@ -205,14 +207,14 @@ class HashlistsByAlgLoaderThread(threading.Thread):
                 # Mark as 'parsing' for HashlistsLoader don`t get it to work before we done
                 self._db.update("hashlists", {'parsed': 0, 'status': 'parsing'}, "id = {0}".format(hashlist_id))
 
-                _d("hashlist_common_loader", "Delete old hashes of #{0}".format(hashlist_id))
+                Registry().get('logger').log("hashlist_common_loader", "Delete old hashes of #{0}".format(hashlist_id))
                 self.clean_old_hashes(hashlist_id)
 
-                _d("hashlist_common_loader", "Put data in file for #{0}".format(hashlist_id))
+                Registry().get('logger').log("hashlist_common_loader", "Put data in file for #{0}".format(hashlist_id))
                 tmp_path = self.put_all_hashes_of_alg_in_file(alg_id)
 
                 self._db.update("hashlists", {'status': 'wait', 'tmp_path': tmp_path}, "id = {0}".format(hashlist_id))
 
-                _d("hashlist_common_loader", "Done #{0}".format(hashlist_id))
+                Registry().get('logger').log("hashlist_common_loader", "Done #{0}".format(hashlist_id))
 
             time.sleep(self.delay_per_check)

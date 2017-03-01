@@ -11,7 +11,6 @@ Copyright (c) Anton Kuzmin <http://anton-kuzmin.ru> (ru) <http://anton-kuzmin.pr
  Main cron of HBS
 """
 
-import sys
 import time
 import os
 
@@ -24,7 +23,7 @@ from classes.HashlistsLoaderThread import HashlistsLoaderThread
 from classes.ResultParseThread import ResultParseThread
 from classes.HashlistsByAlgLoaderThread import HashlistsByAlgLoaderThread
 from classes.FinderInsideProThread import FinderInsideProThread
-from libs.common import _d
+from classes.Logger import Logger
 
 config = configparser.ConfigParser()
 config.read(os.getcwd() + '/' + 'config.ini')
@@ -64,10 +63,15 @@ if not os.path.exists("{0}/{1}".format(config['main']['path_to_hc'], config['mai
     print "ERROR: HC bin {0}/{1} is not exists!".format(config['main']['path_to_hc'], config['main']['hc_bin'])
     exit(0)
 
-print "Started at " + time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())
-sys.stdout.flush()
-
 Registry().set('db', db)
+
+#logger_db = Factory().new_db_connect()
+#Registry().set('logger_db', logger_db)
+
+logger = Logger()
+Registry().set('logger', logger)
+
+Registry().get('logger').log("main", "Started")
 
 hashlists_loader_thrd = HashlistsLoaderThread()
 hashlists_loader_thrd.start()
@@ -82,7 +86,7 @@ if len(config['main']['finder_key']):
     finder_insidepro_thrd = FinderInsideProThread()
     finder_insidepro_thrd.start()
 else:
-    _d('main', 'FinderInsidePro key not found, service will not start')
+    Registry().get('logger').log('main', 'FinderInsidePro key not found, service will not start')
 
 work_thrd = None
 while True:
@@ -108,5 +112,3 @@ while True:
         pass
 
     time.sleep(5)
-
-

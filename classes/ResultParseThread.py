@@ -15,8 +15,9 @@ import threading
 
 from classes.Registry import Registry
 from classes.Factory import Factory
+from classes.Logger import Logger
 from classes.HbsException import HbsException
-from libs.common import _d, md5, update_hashlist_counts
+from libs.common import md5, update_hashlist_counts
 
 
 class ResultParseThread(threading.Thread):
@@ -139,14 +140,14 @@ class ResultParseThread(threading.Thread):
         """ Run thread """
         while self.available:
             if self.get_waiting_task_for_work():
-                _d("result_parser", "Getted result of task #{0}".format(self.get_current_work_task_id()))
+                Registry().get('logger').log("result_parser", "Getted result of task #{0}".format(self.get_current_work_task_id()))
                 self.update_status("outparsing")
 
                 work_task = self.get_work_task_data()
                 hashlist = self.get_hashlist_data(work_task['hashlist_id'])
 
                 if len(work_task['out_file']) and os.path.exists(work_task['out_file']):
-                    _d("result_parser", "Start put found passwords info DB")
+                    Registry().get('logger').log("result_parser", "Start put found passwords info DB")
 
                     self.parse_outfile_and_fill_found_hashes(work_task, hashlist)
 
@@ -160,8 +161,8 @@ class ResultParseThread(threading.Thread):
                     self.update_all_hashlists_counts_by_alg_id(hashlist['alg_id'])
                 else:
                     self.update_status('done')
-                    _d("result_parser", "Outfile {0} not exists".format(work_task['out_file']))
+                    Registry().get('logger').log("result_parser", "Outfile {0} not exists".format(work_task['out_file']))
 
-                _d("result_parser", "Work for task #{0} done".format(self.get_current_work_task_id()))
+                    Registry().get('logger').log("result_parser", "Work for task #{0} done".format(self.get_current_work_task_id()))
 
             time.sleep(self.delay_per_check)
