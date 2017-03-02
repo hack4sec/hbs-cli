@@ -240,15 +240,9 @@ class HashlistsLoaderThread(threading.Thread):
                     continue
 
                 sorted_path = self.sort_file(hashlist)
-                import pprint
-                pprint.pprint(
-                    sorted_path
-                )
+
                 put_in_db_path = self.sorted_file_to_db_file(sorted_path, hashlist)
-                import pprint
-                pprint.pprint(
-                    put_in_db_path
-                )
+
                 self.load_file_in_db(put_in_db_path, hashlist)
 
                 self.find_similar_found_hashes(hashlist)
