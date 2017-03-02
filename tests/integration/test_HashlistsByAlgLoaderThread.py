@@ -186,7 +186,13 @@ class Test_HashlistsByAlgLoaderThread(CommonIntegration):
         self.loader_thrd.start()
         time.sleep(5)
 
-        assert self.db.fetch_one("SELECT id FROM hashlists WHERE common_by_alg") is None
+        test_hashlist_data = {'id': 3, 'name': 'All-MD4', 'have_salts': 0, 'delimiter': self.thrd.DELIMITER,
+                              'cracked': 0, 'uncracked': 0, 'errors': '', 'parsed': 0, 'status': 'ready',
+                              'common_by_alg': 3}
+        hashlist_data = self.db.fetch_row("SELECT * FROM hashlists WHERE common_by_alg")
+
+        for field in test_hashlist_data:
+            assert hashlist_data[field] == test_hashlist_data[field]
 
         self.db.update("task_works", {'status': 'wait'}, 'id=1')
 

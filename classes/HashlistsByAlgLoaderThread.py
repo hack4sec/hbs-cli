@@ -122,6 +122,12 @@ class HashlistsByAlgLoaderThread(threading.Thread):
         """ Get possible hashlist and alg for build/update """
         hashes_by_algs_count = self.hashes_count_by_algs()
         for alg_id in hashes_by_algs_count:
+            hashlist_id = self.get_common_hashlist_id_by_alg(alg_id)
+
+            hashes_count_in_hashlist = self.hashes_count_in_hashlist(hashlist_id)
+            if hashes_count_in_hashlist == hashes_by_algs_count[alg_id]:
+                continue
+
             if self.is_alg_in_parse(alg_id):
                 Registry().get('logger').log(
                     "hashlist_common_loader",
@@ -131,7 +137,6 @@ class HashlistsByAlgLoaderThread(threading.Thread):
                 )
                 continue
 
-            hashlist_id = self.get_common_hashlist_id_by_alg(alg_id)
             if hashlist_id == self.get_current_work_hashlist() or \
                             self.get_hashlist_status(hashlist_id) != 'ready':
                 Registry().get('logger').log(
@@ -142,11 +147,6 @@ class HashlistsByAlgLoaderThread(threading.Thread):
                         self.get_hashlist_status(hashlist_id)
                     )
                 )
-                continue
-
-            hashes_count_in_hashlist = self.hashes_count_in_hashlist(hashlist_id)
-
-            if hashes_count_in_hashlist == hashes_by_algs_count[alg_id]:
                 continue
 
             Registry().get('logger').log(
