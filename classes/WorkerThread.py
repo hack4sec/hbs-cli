@@ -411,7 +411,7 @@ class WorkerThread(threading.Thread):
         while p.poll() is None:
             self.refresh_work_task()
 
-            if self.work_task['status'] in ['go_stop', 'stop']:
+            if not process_stoped and self.work_task['status'] in ['go_stop', 'stop']:
                 Registry().get('logger').log("worker", "Stop signal ")
                 p.stdin.write('q')
                 process_stoped = True
