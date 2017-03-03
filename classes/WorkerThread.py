@@ -456,7 +456,7 @@ class WorkerThread(threading.Thread):
         Registry().get('logger').log("worker", "Clean file with stdout")
         self.clean_stdout_file()
 
-        if self.work_task['status'] == 'done' and \
+        if self.work_task['status'] == 'waitoutparse' and \
                 len(self.work_task['hybride_dict']) and \
                 os.path.exists(self.work_task['hybride_dict']):
             os.remove(self.work_task['hybride_dict'])

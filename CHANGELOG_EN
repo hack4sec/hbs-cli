@@ -1,4 +1,5 @@
 v0.3a dev:
+ Fixed hybride dicts remove mechanism after end of work. Now it delete after work task done.
  Wait time on deadlock (before request retry) can be setted in config.ini
  Output logging into database added, all write in table `logs`
  Integration with finder.insidepro.com added. See docs.
