@@ -9,26 +9,24 @@ Copyright (c) Anton Kuzmin <http://anton-kuzmin.ru> (ru) <http://anton-kuzmin.pr
 Thread for compile hashlists by common (one) alg
 """
 
-import threading
 import time
 
 from classes.Registry import Registry
 from classes.Factory import Factory
-from classes.Logger import Logger
+from classes.CommonThread import CommonThread
 from libs.common import gen_random_md5
 
 
-class HashlistsByAlgLoaderThread(threading.Thread):
+class HashlistsByAlgLoaderThread(CommonThread):
     """ Thread for compile hashlists by common (one) alg """
     current_hashlist_id = None
-    daemon = True
     DELIMITER = 'UNIQUEDELIMITER'
     delay_per_check = None
-    available = True
+    thread_name = "hashlist_common_loader"
 
     def __init__(self):
         """ Initialization """
-        threading.Thread.__init__(self)
+        CommonThread.__init__(self)
         config = Registry().get('config')
 
         self.tmp_dir = config['main']['tmp_dir']
@@ -198,25 +196,28 @@ class HashlistsByAlgLoaderThread(threading.Thread):
 
     def run(self):
         """ Run thread """
-        while self.available:
-            candidate = self.get_possible_hashlist_and_alg()
-            if candidate is not None:
-                hashlist_id = candidate['hashlist_id']
-                alg_id = candidate['alg_id']
+        try:
+            while self.available:
+                candidate = self.get_possible_hashlist_and_alg()
+                if candidate is not None:
+                    hashlist_id = candidate['hashlist_id']
+                    alg_id = candidate['alg_id']
 
-                # Mark as 'parsing' for HashlistsLoader don`t get it to work before we done
-                self._db.update("hashlists", {'parsed': 0, 'status': 'parsing'}, "id = {0}".format(hashlist_id))
+                    # Mark as 'parsing' for HashlistsLoader don`t get it to work before we done
+                    self._db.update("hashlists", {'parsed': 0, 'status': 'parsing'}, "id = {0}".format(hashlist_id))
 
-                Registry().get('logger').log("hashlist_common_loader", "Delete old hashes of #{0}".format(hashlist_id))
-                self.clean_old_hashes(hashlist_id)
+                    Registry().get('logger').log("hashlist_common_loader", "Delete old hashes of #{0}".format(hashlist_id))
+                    self.clean_old_hashes(hashlist_id)
 
-                Registry().get('logger').log("hashlist_common_loader", "Put data in file for #{0}".format(hashlist_id))
-                tmp_path = self.put_all_hashes_of_alg_in_file(alg_id)
+                    Registry().get('logger').log("hashlist_common_loader", "Put data in file for #{0}".format(hashlist_id))
+                    tmp_path = self.put_all_hashes_of_alg_in_file(alg_id)
 
-                self._db.update("hashlists",
-                                {'status': 'wait', 'tmp_path': tmp_path, "when_loaded": int(time.time())},
-                                "id = {0}".format(hashlist_id))
+                    self._db.update("hashlists",
+                                    {'status': 'wait', 'tmp_path': tmp_path, "when_loaded": int(time.time())},
+                                    "id = {0}".format(hashlist_id))
 
-                Registry().get('logger').log("hashlist_common_loader", "Done #{0}".format(hashlist_id))
+                    Registry().get('logger').log("hashlist_common_loader", "Done #{0}".format(hashlist_id))
 
-            time.sleep(self.delay_per_check)
+                time.sleep(self.delay_per_check)
+        except BaseException as ex:
+            self.exception(ex)

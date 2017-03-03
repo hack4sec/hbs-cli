@@ -30,9 +30,11 @@ class Test_HashlistsByAlgLoaderThread(CommonIntegration):
 
         self.thrd = HashlistsByAlgLoaderThread()
         self.thrd.delay_per_check = 1
+        self.thrd.catch_exceptions = False
 
         self.loader_thrd = HashlistsLoaderThread()
         self.loader_thrd.delay_per_check = 1
+        self.loader_thrd.catch_exceptions = False
 
     def teardown(self):
         """ Tests teardown """

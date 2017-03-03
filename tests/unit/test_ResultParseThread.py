@@ -30,6 +30,7 @@ class Test_ResultParseThread(CommonUnit):
         self._add_work_task()
         self.thrd = ResultParseThread()
         self.thrd.current_work_task_id = 1
+        self.thrd.catch_exceptions = False
 
     def teardown(self):
         """ Teardown tests """

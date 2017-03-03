@@ -40,7 +40,7 @@ class Test_WorkerThread(CommonIntegration):
 
     def test_dict_task(self):
         """ Run simple dict task """
-        self._add_hashlist(alg_id=0)
+        self._add_hashlist(alg_id=0, uncracked=4)
         self._add_hash(hash=md5('123'))
         self._add_hash(hash=md5('456'))
         self._add_hash(hash=md5('ccc'))
@@ -59,6 +59,7 @@ class Test_WorkerThread(CommonIntegration):
         self._add_task(source=1)
 
         self.thrd = WorkerThread(self.db.fetch_row("SELECT * FROM task_works WHERE id = 1"))
+        self.thrd.catch_exceptions = False
         self.thrd.start()
 
         start_time = int(time.time())
@@ -77,7 +78,7 @@ class Test_WorkerThread(CommonIntegration):
 
     def test_mask_task(self):
         """ Run simple mask task """
-        self._add_hashlist(alg_id=0)
+        self._add_hashlist(alg_id=0, uncracked=4)
         self._add_hash(hash=md5('123'))
         self._add_hash(hash=md5('456'))
         self._add_hash(hash=md5('ccc'))
@@ -86,6 +87,7 @@ class Test_WorkerThread(CommonIntegration):
         self._add_task(source='?l?l?l', type='mask')
 
         self.thrd = WorkerThread(self.db.fetch_row("SELECT * FROM task_works WHERE id = 1"))
+        self.thrd.catch_exceptions = False
         self.thrd.start()
 
         start_time = int(time.time())
@@ -104,7 +106,7 @@ class Test_WorkerThread(CommonIntegration):
 
     def test_dictmask_task(self):
         """ Run hybride dict+mask task """
-        self._add_hashlist(alg_id=0)
+        self._add_hashlist(alg_id=0, uncracked=4)
         self._add_hash(hash=md5('123'))
         self._add_hash(hash=md5('456'))
         self._add_hash(hash=md5('ccc1'))
@@ -122,6 +124,7 @@ class Test_WorkerThread(CommonIntegration):
         file_put_contents(dicts_path + "/2.dict", "ccc\nddd\n")
 
         self.thrd = WorkerThread(self.db.fetch_row("SELECT * FROM task_works WHERE id = 1"))
+        self.thrd.catch_exceptions = False
         self.thrd.start()
 
         start_time = int(time.time())
@@ -140,7 +143,7 @@ class Test_WorkerThread(CommonIntegration):
 
     def test_maskdict_task(self):
         """ Run hybride mask+dict task """
-        self._add_hashlist(alg_id=0)
+        self._add_hashlist(alg_id=0, uncracked=4)
         self._add_hash(hash=md5('123'))
         self._add_hash(hash=md5('456'))
         self._add_hash(hash=md5('1ccc'))
@@ -158,6 +161,7 @@ class Test_WorkerThread(CommonIntegration):
         file_put_contents(dicts_path + "/2.dict", "ccc\nddd\n")
 
         self.thrd = WorkerThread(self.db.fetch_row("SELECT * FROM task_works WHERE id = 1"))
+        self.thrd.catch_exceptions = False
         self.thrd.start()
 
         start_time = int(time.time())
@@ -191,6 +195,7 @@ class Test_WorkerThread(CommonIntegration):
         self._add_task(source=1)
 
         self.thrd = WorkerThread(self.db.fetch_row("SELECT * FROM task_works WHERE id = 1"))
+        self.thrd.catch_exceptions = False
         self.thrd.start()
 
         start_time = int(time.time())

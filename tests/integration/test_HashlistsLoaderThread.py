@@ -29,6 +29,7 @@ class Test_HashlistsLoaderThread(CommonIntegration):
 
         self.thrd = HashlistsLoaderThread()
         self.thrd.delay_per_check = 1
+        self.thrd.catch_exceptions = False
 
     def teardown(self):
         """ Teardown tests """

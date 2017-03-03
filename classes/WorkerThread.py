@@ -9,23 +9,24 @@ Copyright (c) Anton Kuzmin <http://anton-kuzmin.ru> (ru) <http://anton-kuzmin.pr
 Work thread
 """
 
-import threading
+
 import time
 import os
 import shutil
 import re
 import json
+import traceback
 
 from subprocess import Popen, PIPE, check_output
 from classes.Registry import Registry
 from classes.HbsException import HbsException
 from classes.Factory import Factory
+from classes.CommonThread import CommonThread
 
 from libs.common import gen_random_md5
 
-class WorkerThread(threading.Thread):
+class WorkerThread(CommonThread):
     """ Main work thread - run hc, control work, etc """
-    daemon = True
     work_task = None
     done = False
     _db = None
@@ -36,12 +37,14 @@ class WorkerThread(threading.Thread):
     path_to_hc = None
     hc_bin = None
 
+    thread_name = "worker"
+
     def __init__(self, work_task):
         """
         Initialization
         :param work_task: Work task row (named dict from db)
         """
-        threading.Thread.__init__(self)
+        CommonThread.__init__(self)
         self.work_task = work_task
         self._db = Factory().new_db_connect()
 
@@ -350,142 +353,146 @@ class WorkerThread(threading.Thread):
 
     def run(self):
         """ Start method of thread """
-        Registry().get('logger').log("worker", "Run thread with work_task id: {0}".format(self.work_task['id']))
+        try:
+            Registry().get('logger').log("worker", "Run thread with work_task id: {0}".format(self.work_task['id']))
 
-        uncracked_in_hashlist = self._db.fetch_one(
-            "SELECT uncracked FROM hashlists WHERE id = {0}".format(self.work_task['hashlist_id']))
-        if uncracked_in_hashlist == 0:
-            self._db.q("UPDATE task_works SET status='done' WHERE id = {0}".format(self.work_task['id']))
-            Registry().get('logger').log(
-                "worker",
-                "Work task {0} blank, because hashlist {1} not contains uncracked hashes".format(
-                    self.work_task['id'], self.work_task['hashlist_id']))
+            uncracked_in_hashlist = self._db.fetch_one(
+                "SELECT uncracked FROM hashlists WHERE id = {0}".format(self.work_task['hashlist_id']))
+            if uncracked_in_hashlist == 0:
+                self._db.q("UPDATE task_works SET status='done' WHERE id = {0}".format(self.work_task['id']))
+                Registry().get('logger').log(
+                    "worker",
+                    "Work task {0} blank, because hashlist {1} not contains uncracked hashes".format(
+                        self.work_task['id'], self.work_task['hashlist_id']))
+                self.done = True
+                return
+
+            task_is_new = not len(self.work_task['session_name'])
+            if task_is_new:
+                session_name = gen_random_md5()
+                path_stdout = "{0}/{1}.output".format(self.outs_path, gen_random_md5())
+                out_file = "{0}/{1}.out".format(self.tmp_dir, gen_random_md5())
+                self.update_task_props(
+                    {
+                        'session_name': session_name,
+                        'path_stdout': path_stdout,
+                        'out_file': out_file,
+                        'hc_status': '',
+                        'hc_speed': '',
+                        'hc_curku': '',
+                        'hc_progress': '',
+                        'hc_rechash': '',
+                        'hc_temp': '',
+                        'stderr': '',
+                    }
+                )
+                self.calc_hashes_before()
+            else:
+                path_stdout = self.work_task['path_stdout']
+
+            self.update_task_props({'status': 'work'})
+
+            fh_output = open(path_stdout, 'a')
+            if not task_is_new:
+                fh_output.write('\n\n')
+
+            os.chdir(self.path_to_hc)
+
+            task = self.get_task_data_by_id(self.work_task['task_id'])
+            Registry().get('logger').log("worker",
+                                         "Source task id/source: {0}/{1}/{2}".format(
+                                             task['id'], task['type'], task['source']))
+
+            self.update_task_props({'process_status': "buildhashlist"})
+            path_to_hashlist = self.make_hashlist()
+            Registry().get('logger').log("worker", "Hashlist created")
+
+            self.update_task_props({'process_status': "compilecommand"})
+            Registry().get('logger').log("worker", "Compile command")
+
+            cmd_to_run = self.build_cmd(task, task_is_new, path_to_hashlist)
+
+            Registry().get('logger').log("worker", "Will run: " + " ".join(cmd_to_run))
+            fh_output.write(" ".join(cmd_to_run) + "\n")
+
+            stime = int(time.time())
+
+            process_stoped = False
+            stop_by_priority = False
+
+            self.update_task_props({'process_status': "starting"})
+
+            p = Popen(" ".join(cmd_to_run), stdout=PIPE, stdin=PIPE, stderr=PIPE, shell=True)
+            while p.poll() is None:
+                self.refresh_work_task()
+
+                if not process_stoped and self.work_task['status'] in ['go_stop', 'stop']:
+                    Registry().get('logger').log("worker", "Stop signal ")
+                    p.stdin.write('q')
+                    process_stoped = True
+
+                if self.not_high_priority():
+                    stop_by_priority = True
+                    Registry().get('logger').log("worker", "Have most priority task: {0}".format(self.not_high_priority()))
+                    p.stdin.write('q')
+                    process_stoped = True
+
+                output = p.stdout.read(self.out_buff_len)
+                if len(output.strip()):
+                    fh_output.write(output)
+
+                rows = re.findall(
+                    "STATUS(.*)SPEED(.*)CURKU(.*)PROGRESS(.*)RECHASH(.*)RECSALT(.*)TEMP(.*)",
+                    output
+                )
+
+                if len(rows):
+                    if self.work_task['process_status'] != 'work':
+                        self.update_task_props({'process_status': "work"})
+                    self.update_hc_status(map(str.strip, rows[-1]))
+
+                time.sleep(self.status_time/2)
+
+            fh_output.write(p.stdout.read())
+            self.update_task_props({'work_time': int(self.work_task['work_time']) + (int(time.time()) - stime)})
+
+            stderr = p.stderr.read()
+            if len(stderr.strip()):
+                self.update_task_props({'stderr': stderr.strip()})
+                fh_output.write('\n' + stderr)
+
+            fh_output.close()
+
+            Registry().get('logger').log("worker", "Task done, wait load cracked hashes, worker go to next task")
+
+            Registry().get('logger').log("worker", "Change task status")
+            self.change_task_status(stop_by_priority, process_stoped)
+
+            Registry().get('logger').log("worker", "Clean file with stdout")
+            self.clean_stdout_file()
+
+            if self.work_task['status'] == 'waitoutparse':
+                session_file = "{0}/{1}.restore".format(self.path_to_hc, self.work_task['session_name'])
+                if os.path.exists(session_file):
+                    os.remove(session_file)
+                log_file = "{0}/{1}.log".format(self.path_to_hc, self.work_task['session_name'])
+                if os.path.exists(log_file):
+                    os.remove(log_file)
+
+            if self.work_task['status'] == 'waitoutparse' and \
+                    len(self.work_task['hybride_dict']) and \
+                    os.path.exists(self.work_task['hybride_dict']):
+                os.remove(self.work_task['hybride_dict'])
+                self.update_task_props({'hybride_dict': ''})
+
+            if self.work_task['status'] == 'waitoutparse':
+                Registry().get('logger').log("worker", "Work task {0} done\n".format(self.work_task['id']))
+            elif self.work_task['status'] == 'wait':
+                Registry().get('logger').log("worker", "Work task {0} return to wait\n".format(self.work_task['id']))
+            elif self.work_task['status'] == 'stop':
+                Registry().get('logger').log("worker", "Work task {0} stopped\n".format(self.work_task['id']))
+
             self.done = True
-            return
+        except BaseException as ex:
+            self.exception(ex)
 
-        task_is_new = not len(self.work_task['session_name'])
-        if task_is_new:
-            session_name = gen_random_md5()
-            path_stdout = "{0}/{1}.output".format(self.outs_path, gen_random_md5())
-            out_file = "{0}/{1}.out".format(self.tmp_dir, gen_random_md5())
-            self.update_task_props(
-                {
-                    'session_name': session_name,
-                    'path_stdout': path_stdout,
-                    'out_file': out_file,
-                    'hc_status': '',
-                    'hc_speed': '',
-                    'hc_curku': '',
-                    'hc_progress': '',
-                    'hc_rechash': '',
-                    'hc_temp': '',
-                    'stderr': '',
-                }
-            )
-            self.calc_hashes_before()
-        else:
-            path_stdout = self.work_task['path_stdout']
-
-        self.update_task_props({'status': 'work'})
-
-        fh_output = open(path_stdout, 'a')
-        if not task_is_new:
-            fh_output.write('\n\n')
-
-        os.chdir(self.path_to_hc)
-
-        task = self.get_task_data_by_id(self.work_task['task_id'])
-        Registry().get('logger').log("worker",
-                                     "Source task id/source: {0}/{1}/{2}".format(
-                                         task['id'], task['type'], task['source']))
-
-        self.update_task_props({'process_status': "buildhashlist"})
-        path_to_hashlist = self.make_hashlist()
-        Registry().get('logger').log("worker", "Hashlist created")
-
-        self.update_task_props({'process_status': "compilecommand"})
-        Registry().get('logger').log("worker", "Compile command")
-
-        cmd_to_run = self.build_cmd(task, task_is_new, path_to_hashlist)
-
-        Registry().get('logger').log("worker", "Will run: " + " ".join(cmd_to_run))
-        fh_output.write(" ".join(cmd_to_run) + "\n")
-
-        stime = int(time.time())
-
-        process_stoped = False
-        stop_by_priority = False
-
-        self.update_task_props({'process_status': "starting"})
-
-        p = Popen(" ".join(cmd_to_run), stdout=PIPE, stdin=PIPE, stderr=PIPE, shell=True)
-        while p.poll() is None:
-            self.refresh_work_task()
-
-            if not process_stoped and self.work_task['status'] in ['go_stop', 'stop']:
-                Registry().get('logger').log("worker", "Stop signal ")
-                p.stdin.write('q')
-                process_stoped = True
-
-            if self.not_high_priority():
-                stop_by_priority = True
-                Registry().get('logger').log("worker", "Have most priority task: {0}".format(self.not_high_priority()))
-                p.stdin.write('q')
-                process_stoped = True
-
-            output = p.stdout.read(self.out_buff_len)
-            if len(output.strip()):
-                fh_output.write(output)
-
-            rows = re.findall(
-                "STATUS(.*)SPEED(.*)CURKU(.*)PROGRESS(.*)RECHASH(.*)RECSALT(.*)TEMP(.*)",
-                output
-            )
-
-            if len(rows):
-                if self.work_task['process_status'] != 'work':
-                    self.update_task_props({'process_status': "work"})
-                self.update_hc_status(map(str.strip, rows[-1]))
-
-            time.sleep(self.status_time/2)
-
-        fh_output.write(p.stdout.read())
-        self.update_task_props({'work_time': int(self.work_task['work_time']) + (int(time.time()) - stime)})
-
-        stderr = p.stderr.read()
-        if len(stderr.strip()):
-            self.update_task_props({'stderr': stderr.strip()})
-            fh_output.write('\n' + stderr)
-
-        fh_output.close()
-
-        Registry().get('logger').log("worker", "Task done, wait load cracked hashes, worker go to next task")
-
-        Registry().get('logger').log("worker", "Change task status")
-        self.change_task_status(stop_by_priority, process_stoped)
-
-        Registry().get('logger').log("worker", "Clean file with stdout")
-        self.clean_stdout_file()
-
-        if self.work_task['status'] == 'waitoutparse':
-            session_file = "{0}/{1}.restore".format(self.path_to_hc, self.work_task['session_name'])
-            if os.path.exists(session_file):
-                os.remove(session_file)
-            log_file = "{0}/{1}.log".format(self.path_to_hc, self.work_task['session_name'])
-            if os.path.exists(log_file):
-                os.remove(log_file)
-
-        if self.work_task['status'] == 'waitoutparse' and \
-                len(self.work_task['hybride_dict']) and \
-                os.path.exists(self.work_task['hybride_dict']):
-            os.remove(self.work_task['hybride_dict'])
-            self.update_task_props({'hybride_dict': ''})
-
-        if self.work_task['status'] == 'waitoutparse':
-            Registry().get('logger').log("worker", "Work task {0} done\n".format(self.work_task['id']))
-        elif self.work_task['status'] == 'wait':
-            Registry().get('logger').log("worker", "Work task {0} return to wait\n".format(self.work_task['id']))
-        elif self.work_task['status'] == 'stop':
-            Registry().get('logger').log("worker", "Work task {0} stopped\n".format(self.work_task['id']))
-
-        self.done = True

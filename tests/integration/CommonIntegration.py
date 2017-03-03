@@ -62,7 +62,7 @@ class CommonIntegration(object):
 
     def _add_hashlist(
             self, id=1, name='test', alg_id=3, have_salts=0, status='ready',
-            common_by_alg=0, parsed=1, tmp_path='', last_finder_checked=0):
+            common_by_alg=0, parsed=1, tmp_path='', last_finder_checked=0, uncracked=0):
         """ Add hashlist record """
         self.db.insert(
             "hashlists",
@@ -73,7 +73,7 @@ class CommonIntegration(object):
                 'have_salts': have_salts,
                 'delimiter': 'UNIQUEDELIMITER' if have_salts else '',
                 'cracked': 0,
-                'uncracked': 0,
+                'uncracked': uncracked,
                 'errors': '',
                 'parsed': parsed,
                 'tmp_path': tmp_path,

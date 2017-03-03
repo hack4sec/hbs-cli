@@ -27,6 +27,7 @@ class Test_HashlistsLoaderThread(CommonIntegration):
         """ Tests setup """
         self._clean_db()
         self.thrd = FinderInsideProThread()
+        self.thrd.catch_exceptions = False
         self.db.update("algs", {'finder_insidepro_allowed': 1}, "id")
 
 

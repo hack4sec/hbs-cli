@@ -28,6 +28,7 @@ class Test_ResultParseThread(CommonIntegration):
         """ Setup tests """
         self._clean_db()
         self.thrd = ResultParseThread()
+        self.thrd.catch_exceptions = False
 
     def teardown(self):
         """ Teardown tests """

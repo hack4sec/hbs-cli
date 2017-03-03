@@ -44,7 +44,7 @@ class Test_Full(CommonIntegration):
 
     def test_run_1(self):
         """ Have one ready hashlist. Load new hashlist, start brute on it. Found same hashes in first hashlist """
-        self._add_hashlist(alg_id=4)
+        self._add_hashlist(alg_id=4, uncracked=3)
         self._add_hash(hash=md5('333'), summ=md5(md5('333')))
         self._add_hash(hash=md5('444'), summ=md5(md5('444')))
         self._add_hash(hash=md5('ccc'), summ=md5(md5('ccc')))
@@ -86,7 +86,7 @@ class Test_Full(CommonIntegration):
         Start brute on it. Found one hash which exists in first & second hashlists.
         Rebuild common hashlist
         """
-        self._add_hashlist(alg_id=4)
+        self._add_hashlist(alg_id=4, uncracked=3)
         self._add_hash(hash=md5('333'), summ=md5(md5('333')))
         self._add_hash(hash=md5('444'), summ=md5(md5('444')))
         self._add_hash(hash=md5('ccc'), summ=md5(md5('ccc')))
@@ -128,12 +128,12 @@ class Test_Full(CommonIntegration):
         Have 2 hashlists. Start task by one, add second with high priority. First task stop, start second.
         Wait for second done, and first return to work and done.
         """
-        self._add_hashlist(alg_id=4)
+        self._add_hashlist(alg_id=4, uncracked=3)
         self._add_hash(hash=md5('333'), summ=md5(md5('333')))
         self._add_hash(hash=md5('444'), summ=md5(md5('444')))
         self._add_hash(hash=md5('ccccccc'), summ=md5(md5('ccc')))
 
-        self._add_hashlist(id=2, alg_id=23)
+        self._add_hashlist(id=2, alg_id=23, uncracked=3)
         self._add_hash(hashlist_id=2, hash=md5(md5('333')), summ=md5(md5(md5('333'))))
         self._add_hash(hashlist_id=2, hash=md5(md5('444')), summ=md5(md5(md5('444'))))
         self._add_hash(hashlist_id=2, hash=md5(md5('zzzweeg')), summ=md5(md5(md5('ccc'))))
@@ -182,22 +182,22 @@ class Test_Full(CommonIntegration):
         Have 2 hashlists. Start one task by first, add second task with same priority. Stop first "manually", second
         start and done. After that first "manually" return to work.
         """
-        self._add_hashlist(alg_id=4)
+        self._add_hashlist(alg_id=4, uncracked=3)
         self._add_hash(hash=md5('333'), summ=md5(md5('333')))
         self._add_hash(hash=md5('444'), summ=md5(md5('444')))
         self._add_hash(hash=md5('ccccccc'), summ=md5(md5('ccccccc')))
 
-        self._add_hashlist(id=2, alg_id=23)
+        self._add_hashlist(id=2, alg_id=23, uncracked=3)
         self._add_hash(hashlist_id=2, hash=md5(md5('333')), summ=md5(md5(md5('333'))))
         self._add_hash(hashlist_id=2, hash=md5(md5('444')), summ=md5(md5(md5('444'))))
         self._add_hash(hashlist_id=2, hash=md5(md5('zzzweeg')), summ=md5(md5(md5('zzzweeg'))))
 
-        self._add_hashlist(id=3, alg_id=4, common_by_alg=4)
+        self._add_hashlist(id=3, alg_id=4, common_by_alg=4, uncracked=3)
         self._add_hash(hashlist_id=3, hash=md5('333'), summ=md5(md5('333')))
         self._add_hash(hashlist_id=3, hash=md5('444'), summ=md5(md5('444')))
         self._add_hash(hashlist_id=3, hash=md5('ccccccc'), summ=md5(md5('ccccccc')))
 
-        self._add_hashlist(id=4, alg_id=23, common_by_alg=23)
+        self._add_hashlist(id=4, alg_id=23, common_by_alg=23, uncracked=3)
         self._add_hash(hashlist_id=4, hash=md5(md5('333')), summ=md5(md5(md5('333'))))
         self._add_hash(hashlist_id=4, hash=md5(md5('444')), summ=md5(md5(md5('444'))))
         self._add_hash(hashlist_id=4, hash=md5(md5('zzzweeg')), summ=md5(md5(md5('zzzweeg'))))
@@ -287,8 +287,8 @@ class Test_Full(CommonIntegration):
         """
         self.db.update("algs", {'finder_insidepro_allowed': 1}, "id")
 
-        self._add_hashlist(alg_id=alg_id, have_salts=have_salt)
-        self._add_hashlist(id=2, alg_id=alg_id, have_salts=have_salt, common_by_alg=alg_id)
+        self._add_hashlist(alg_id=alg_id, have_salts=have_salt, uncracked=len(hashes))
+        self._add_hashlist(id=2, alg_id=alg_id, have_salts=have_salt, common_by_alg=alg_id, uncracked=len(hashes))
         for _hash in hashes:
             self._add_hash(hashlist_id=1, id=_hash['id'], hash=_hash['hash'], salt=_hash['salt'], summ=_hash['summ'])
             self._add_hash(hashlist_id=2, id=_hash['common_id'], hash=_hash['hash'],
@@ -296,8 +296,6 @@ class Test_Full(CommonIntegration):
 
         process = Popen("python ../../hbs.py", stdout=PIPE, stdin=PIPE, stderr=PIPE, shell=True, preexec_fn=os.setsid)
         time.sleep(15)
-        os.killpg(os.getpgid(process.pid), signal.SIGTERM)
-        print process.stdout.read()
 
         for _hash in hashes:
             test_data = self.db.fetch_row("SELECT * FROM hashes WHERE id = {0}".format(_hash['id']))

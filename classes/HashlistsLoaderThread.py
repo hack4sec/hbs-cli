@@ -9,7 +9,6 @@ Copyright (c) Anton Kuzmin <http://anton-kuzmin.ru> (ru) <http://anton-kuzmin.pr
 Thread for load hashlists
 """
 
-import threading
 import time
 import os
 import subprocess
@@ -18,20 +17,19 @@ import shutil
 from classes.Registry import Registry
 from classes.Factory import Factory
 from classes.HbsException import HbsException
-from classes.Logger import Logger
+from classes.CommonThread import CommonThread
 from libs.common import file_lines_count, gen_random_md5, md5, update_hashlist_counts
 
 
-class HashlistsLoaderThread(threading.Thread):
+class HashlistsLoaderThread(CommonThread):
     """ Thread for load hashlists """
     current_hashlist_id = None
-    daemon = True
     delay_per_check = None
-    available = True
+    thread_name = "hashlist_loader"
 
     def __init__(self):
         """ Initialization """
-        threading.Thread.__init__(self)
+        CommonThread.__init__(self)
         config = Registry().get('config')
 
         self.tmp_dir = config['main']['tmp_dir']
@@ -221,38 +219,41 @@ class HashlistsLoaderThread(threading.Thread):
 
     def run(self):
         """ Run thread """
-        while self.available:
-            if self.get_hashlist_for_load():
-                self.update_status("parsing")
+        try:
+            while self.available:
+                if self.get_hashlist_for_load():
+                    self.update_status("parsing")
 
-                hashlist = self.get_current_hashlist_data()
+                    hashlist = self.get_current_hashlist_data()
 
-                Registry().get('logger').log("hashlist_loader", "Found hashlist #{0}/{1} for work".format(
-                    self.current_hashlist_id, hashlist['name']))
-                if not len(hashlist['tmp_path']) or not os.path.exists(hashlist['tmp_path']):
-                    Registry().get('logger').log("hashlist_loader", "ERR: path not exists #{0}/'{1}'".format(
-                        self.current_hashlist_id, hashlist['tmp_path']))
+                    Registry().get('logger').log("hashlist_loader", "Found hashlist #{0}/{1} for work".format(
+                        self.current_hashlist_id, hashlist['name']))
+                    if not len(hashlist['tmp_path']) or not os.path.exists(hashlist['tmp_path']):
+                        Registry().get('logger').log("hashlist_loader", "ERR: path not exists #{0}/'{1}'".format(
+                            self.current_hashlist_id, hashlist['tmp_path']))
 
-                    self.update_status("errpath")
+                        self.update_status("errpath")
+                        self.parsed_flag(1)
+                        continue
+
+                    sorted_path = self.sort_file(hashlist)
+
+                    put_in_db_path = self.sorted_file_to_db_file(sorted_path, hashlist)
+
+                    self.load_file_in_db(put_in_db_path)
+
+                    self.find_similar_found_hashes(hashlist)
+
+                    update_hashlist_counts(self._db, hashlist['id'])
+
                     self.parsed_flag(1)
-                    continue
+                    self.update_status('ready')
+                    self.update_hashlist_field('tmp_path', '')
+                    os.remove(hashlist['tmp_path'])
 
-                sorted_path = self.sort_file(hashlist)
+                    Registry().get('logger').log("hashlist_loader", "Work for hashlist {0}/{1} done".format(
+                        self.current_hashlist_id, hashlist['name']))
 
-                put_in_db_path = self.sorted_file_to_db_file(sorted_path, hashlist)
-
-                self.load_file_in_db(put_in_db_path)
-
-                self.find_similar_found_hashes(hashlist)
-
-                update_hashlist_counts(self._db, hashlist['id'])
-
-                self.parsed_flag(1)
-                self.update_status('ready')
-                self.update_hashlist_field('tmp_path', '')
-                os.remove(hashlist['tmp_path'])
-
-                Registry().get('logger').log("hashlist_loader", "Work for hashlist {0}/{1} done".format(
-                    self.current_hashlist_id, hashlist['name']))
-
-            time.sleep(self.delay_per_check)
+                time.sleep(self.delay_per_check)
+        except BaseException as ex:
+            self.exception(ex)

@@ -29,6 +29,7 @@ class Test_FinderInsideProThread(CommonUnit):
         """ Tests setup """
         self._clean_db()
         self.thrd = FinderInsideProThread()
+        self.thrd.catch_exceptions = False
 
     def teardown(self):
         """ Tests teardown """

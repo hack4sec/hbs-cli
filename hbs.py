@@ -77,31 +77,45 @@ if version_output[0] != '2':
 
 Registry().set('db', db)
 
-#logger_db = Factory().new_db_connect()
-#Registry().set('logger_db', logger_db)
-
 logger = Logger()
 Registry().set('logger', logger)
 
 Registry().get('logger').log("main", "Started")
 
+threads = {}
+
 hashlists_loader_thrd = HashlistsLoaderThread()
 hashlists_loader_thrd.start()
+threads['hashlists_loader_thrd'] = hashlists_loader_thrd
 
 result_parse_thrd = ResultParseThread()
 result_parse_thrd.start()
+threads['result_parse_thrd'] = result_parse_thrd
 
 hashlists_by_alg_loader_thrd = HashlistsByAlgLoaderThread()
 hashlists_by_alg_loader_thrd.start()
+threads['hashlists_by_alg_loader_thrd'] = hashlists_by_alg_loader_thrd
 
 if len(config['main']['finder_key']):
     finder_insidepro_thrd = FinderInsideProThread()
     finder_insidepro_thrd.start()
+    threads['finder_insidepro_thrd'] = finder_insidepro_thrd
 else:
     Registry().get('logger').log('main', 'FinderInsidePro key not found, service will not start')
 
 work_thrd = None
 while True:
+    # Check threads first, resurect if need
+    for thread_key in threads:
+        if threads[thread_key].died_by_exception is True:
+            thread_class_name = threads[thread_key].__class__.__name__
+            del threads[thread_key]
+            threads[thread_key] = globals()[thread_class_name]()
+            threads[thread_key].start()
+
+            Registry().get('logger').log('main', '{0} resurected'.format(thread_key.upper()))
+
+    # Check tasks
     next_work_task = db.fetch_row(
         "SELECT tw.* FROM task_works tw, hashlists hl "
         "WHERE tw.hashlist_id = hl.id AND hl.parsed AND tw.status='wait' "

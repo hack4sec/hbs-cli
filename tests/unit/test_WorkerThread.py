@@ -35,6 +35,7 @@ class Test_WorkerThread(CommonUnit):
         self._add_hashlist()
         self._add_work_task()
         self.thrd = WorkerThread(self.db.fetch_row("SELECT * FROM task_works WHERE id = 1"))
+        self.thrd.catch_exceptions = False
 
     def teardown(self):
         """ tests teardown """

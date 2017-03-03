@@ -11,25 +11,23 @@ Thread for hc results parsing
 
 import time
 import os
-import threading
 
 from classes.Registry import Registry
 from classes.Factory import Factory
-from classes.Logger import Logger
+from classes.CommonThread import CommonThread
 from classes.HbsException import HbsException
 from libs.common import md5, update_hashlist_counts
 
 
-class ResultParseThread(threading.Thread):
+class ResultParseThread(CommonThread):
     """ Thread for hc results parsing """
     current_work_task_id = None
-    daemon = True
     delay_per_check = None
-    available = True
+    thread_name = "result_parser"
 
     def __init__(self):
         """ Initialization """
-        threading.Thread.__init__(self)
+        CommonThread.__init__(self)
         self._db = Factory().new_db_connect()
 
         config = Registry().get('config')
@@ -138,31 +136,34 @@ class ResultParseThread(threading.Thread):
 
     def run(self):
         """ Run thread """
-        while self.available:
-            if self.get_waiting_task_for_work():
-                Registry().get('logger').log("result_parser", "Getted result of task #{0}".format(self.get_current_work_task_id()))
-                self.update_status("outparsing")
+        try:
+            while self.available:
+                if self.get_waiting_task_for_work():
+                    Registry().get('logger').log("result_parser", "Getted result of task #{0}".format(self.get_current_work_task_id()))
+                    self.update_status("outparsing")
 
-                work_task = self.get_work_task_data()
-                hashlist = self.get_hashlist_data(work_task['hashlist_id'])
+                    work_task = self.get_work_task_data()
+                    hashlist = self.get_hashlist_data(work_task['hashlist_id'])
 
-                if len(work_task['out_file']) and os.path.exists(work_task['out_file']):
-                    Registry().get('logger').log("result_parser", "Start put found passwords info DB")
+                    if len(work_task['out_file']) and os.path.exists(work_task['out_file']):
+                        Registry().get('logger').log("result_parser", "Start put found passwords info DB")
 
-                    self.parse_outfile_and_fill_found_hashes(work_task, hashlist)
+                        self.parse_outfile_and_fill_found_hashes(work_task, hashlist)
 
-                    self.update_status('done')
+                        self.update_status('done')
 
-                    #os.remove(work_task['out_file'])
-                    #self._update_work_task_field('out_file', '')
+                        #os.remove(work_task['out_file'])
+                        #self._update_work_task_field('out_file', '')
 
-                    self.update_task_uncracked_count(work_task['id'], work_task['hashlist_id'])
+                        self.update_task_uncracked_count(work_task['id'], work_task['hashlist_id'])
 
-                    self.update_all_hashlists_counts_by_alg_id(hashlist['alg_id'])
-                else:
-                    self.update_status('done')
-                    Registry().get('logger').log("result_parser", "Outfile {0} not exists".format(work_task['out_file']))
+                        self.update_all_hashlists_counts_by_alg_id(hashlist['alg_id'])
+                    else:
+                        self.update_status('done')
+                        Registry().get('logger').log("result_parser", "Outfile {0} not exists".format(work_task['out_file']))
 
-                    Registry().get('logger').log("result_parser", "Work for task #{0} done".format(self.get_current_work_task_id()))
+                        Registry().get('logger').log("result_parser", "Work for task #{0} done".format(self.get_current_work_task_id()))
 
-            time.sleep(self.delay_per_check)
+                time.sleep(self.delay_per_check)
+        except BaseException as ex:
+            self.exception(ex)

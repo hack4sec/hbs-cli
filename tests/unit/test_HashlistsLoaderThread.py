@@ -33,6 +33,7 @@ class Test_HashlistsLoaderThread(CommonUnit):
         self._add_hashlist()
         self.thrd = HashlistsLoaderThread()
         self.thrd.current_hashlist_id = 1
+        self.thrd.catch_exceptions = False
 
     def teardown(self):
         """ Teardown tests """

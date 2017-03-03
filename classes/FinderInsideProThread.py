@@ -9,25 +9,23 @@ Copyright (c) Anton Kuzmin <http://anton-kuzmin.ru> (ru) <http://anton-kuzmin.pr
 Thread for automated check hashes on finder.insidepro.com
 """
 
-import threading
 import time
 
 from classes.Registry import Registry
 from classes.Factory import Factory
 from classes.FinderInsidePro import FinderInsidePro, FinderInsideProException
-from classes.Logger import Logger
+from classes.CommonThread import CommonThread
 from libs.common import gen_random_md5, md5
 
-class FinderInsideProThread(threading.Thread):
+class FinderInsideProThread(CommonThread):
     """ Thread for automated check hashes on finder.insidepro.com """
-    daemon = True
-    available = True
     time_for_check = 3600*24*7
     delay_per_check = None
     UNIQUE_DELIMITER = 'UNIQUEDELIMITER'
+    thread_name = "finderinsidepro"
 
     def __init__(self):
-        threading.Thread.__init__(self)
+        CommonThread.__init__(self)
         config = Registry().get('config')
 
         self.tmp_dir = config['main']['tmp_dir']
@@ -112,42 +110,59 @@ class FinderInsideProThread(threading.Thread):
 
     def run(self):
         """ Run thread """
-        while self.available:
-            hashlists = self.get_ready_common_hashlists()
-            for hashlist in hashlists:
-                Registry().get('logger').log("finderinsidepro", "Got hashlist {0} with alg {1}".format(
-                    hashlist['id'], hashlist['alg_id']
-                ))
-
-                found_count = 0
-                all_count = 0
-                if self.is_alg_in_parse(hashlist['alg_id']):
-                    Registry().get('logger').log("finderinsidepro", "Alg in parse, skip hashlist {0} with alg {1}".format(
+        try:
+            while self.available:
+                hashlists = self.get_ready_common_hashlists()
+                for hashlist in hashlists:
+                    Registry().get('logger').log("finderinsidepro", "Got hashlist {0} with alg {1}".format(
                         hashlist['id'], hashlist['alg_id']
                     ))
-                    continue
 
-                self._db.update("hashlists", {'status': 'parsing'}, 'id = {0}'.format(hashlist['id']))
+                    found_count = 0
+                    all_count = 0
+                    if self.is_alg_in_parse(hashlist['alg_id']):
+                        Registry().get('logger').log("finderinsidepro", "Alg in parse, skip hashlist {0} with alg {1}".format(
+                            hashlist['id'], hashlist['alg_id']
+                        ))
+                        continue
 
-                hc_alg_id = self._db.fetch_one("SELECT alg_id FROM algs WHERE id = {0}".format(hashlist['alg_id']))
+                    self._db.update("hashlists", {'status': 'parsing'}, 'id = {0}'.format(hashlist['id']))
 
-                self.finder.create_session(hc_alg_id)
+                    hc_alg_id = self._db.fetch_one("SELECT alg_id FROM algs WHERE id = {0}".format(hashlist['alg_id']))
 
-                path_to_hashlist_file = self.make_hashlist(hashlist['id'])
+                    self.finder.create_session(hc_alg_id)
 
-                hashes_to_finder = []
-                fh = open(path_to_hashlist_file, 'r')
-                for line in fh:
-                    if line.count(self.UNIQUE_DELIMITER):
-                        _hash, _salt = line.strip().split(self.UNIQUE_DELIMITER)
-                    else:
-                        _hash = line.strip()
-                        _salt = ''
-                    hashes_to_finder.append({'hash': _hash, 'salt': _salt})
+                    path_to_hashlist_file = self.make_hashlist(hashlist['id'])
 
-                    if not len(hashes_to_finder) % FinderInsidePro.hashes_per_once_limit:
+                    hashes_to_finder = []
+                    fh = open(path_to_hashlist_file, 'r')
+                    for line in fh:
+                        if line.count(self.UNIQUE_DELIMITER):
+                            _hash, _salt = line.strip().split(self.UNIQUE_DELIMITER)
+                        else:
+                            _hash = line.strip()
+                            _salt = ''
+                        hashes_to_finder.append({'hash': _hash, 'salt': _salt})
+
+                        if not len(hashes_to_finder) % FinderInsidePro.hashes_per_once_limit:
+                            all_count += len(hashes_to_finder)
+
+                            try:
+                                found_hashes = self.finder.search_hashes(hashes_to_finder, hc_alg_id)
+                            except FinderInsideProException as ex:
+                                if ex.extype == FinderInsideProException.TYPE_SMALL_REMAIN:
+                                    Registry().get('logger').log("finderinsidepro", str(ex))
+                                    break
+                                else:
+                                    raise ex
+
+                            found_count += len(found_hashes)
+
+                            self.put_found_hashes_in_db(hashlist['alg_id'], found_hashes)
+                            hashes_to_finder = []
+
+                    if len(hashes_to_finder):
                         all_count += len(hashes_to_finder)
-
                         try:
                             found_hashes = self.finder.search_hashes(hashes_to_finder, hc_alg_id)
                         except FinderInsideProException as ex:
@@ -156,33 +171,19 @@ class FinderInsideProThread(threading.Thread):
                                 break
                             else:
                                 raise ex
-
                         found_count += len(found_hashes)
-
                         self.put_found_hashes_in_db(hashlist['alg_id'], found_hashes)
-                        hashes_to_finder = []
 
-                if len(hashes_to_finder):
-                    all_count += len(hashes_to_finder)
-                    try:
-                        found_hashes = self.finder.search_hashes(hashes_to_finder, hc_alg_id)
-                    except FinderInsideProException as ex:
-                        if ex.extype == FinderInsideProException.TYPE_SMALL_REMAIN:
-                            Registry().get('logger').log("finderinsidepro", str(ex))
-                            break
-                        else:
-                            raise ex
-                    found_count += len(found_hashes)
-                    self.put_found_hashes_in_db(hashlist['alg_id'], found_hashes)
+                    Registry().get('logger').log("finderinsidepro", "For hashlist {0} with alg {1} found {2} from {3}".format(
+                        hashlist['id'], hashlist['alg_id'], found_count, all_count
+                    ))
 
-                Registry().get('logger').log("finderinsidepro", "For hashlist {0} with alg {1} found {2} from {3}".format(
-                    hashlist['id'], hashlist['alg_id'], found_count, all_count
-                ))
+                    self._db.update("hashlists",
+                                    {"status": "ready", "last_finder_checked": int(time.time())},
+                                    "id = " + str(hashlist['id']))
 
-                self._db.update("hashlists",
-                                {"status": "ready", "last_finder_checked": int(time.time())},
-                                "id = " + str(hashlist['id']))
+                    fh.close()
 
-                fh.close()
-
-            time.sleep(self.delay_per_check)
+                time.sleep(self.delay_per_check)
+        except BaseException as ex:
+            self.exception(ex)
