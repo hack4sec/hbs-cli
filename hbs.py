@@ -13,6 +13,7 @@ Copyright (c) Anton Kuzmin <http://anton-kuzmin.ru> (ru) <http://anton-kuzmin.pr
 
 import time
 import os
+import subprocess
 
 import configparser
 
@@ -61,6 +62,12 @@ if not os.path.exists(config['main']['path_to_hc']):
 
 if not os.path.exists("{0}/{1}".format(config['main']['path_to_hc'], config['main']['hc_bin'])):
     print "ERROR: HC bin {0}/{1} is not exists!".format(config['main']['path_to_hc'], config['main']['hc_bin'])
+    exit(0)
+
+version_output = subprocess.check_output(
+    "{0}/{1} --version".format(config['main']['path_to_hc'], config['main']['hc_bin']), shell=True)
+if version_output[0] != '2':
+    print "ERROR: HBS support only HashCat v2, but you have {0} ({1})".format(version_output[0], version_output)
     exit(0)
 
 Registry().set('db', db)
