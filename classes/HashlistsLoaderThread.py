@@ -97,7 +97,7 @@ class HashlistsLoaderThread(CommonThread):
             "sort -u {0} > {1}".format(hashlist['tmp_path'], sorted_path),
             shell=True
         )
-        Registry().get('logger').log("hashlist_loader", "Before sort - {0}, after - {1}".format(file_lines_count(hashlist['tmp_path']),
+        self.log("Before sort - {0}, after - {1}".format(file_lines_count(hashlist['tmp_path']),
                                                                               file_lines_count(sorted_path)))
         return sorted_path
 
@@ -109,7 +109,7 @@ class HashlistsLoaderThread(CommonThread):
         :return:
         """
         self.update_status("preparedb")
-        Registry().get('logger').log("hashlist_loader", "Prepare file for DB load")
+        self.log("Prepare file for DB load")
 
         errors_lines = ""
 
@@ -157,7 +157,7 @@ class HashlistsLoaderThread(CommonThread):
         :return:
         """
         self.update_status('putindb')
-        Registry().get('logger').log("hashlist_loader", "Data go to DB")
+        self.log("Data go to DB")
 
         if os.path.exists(self.tmp_dir + "/hashes"):
             os.remove(self.tmp_dir + "/hashes")
@@ -186,7 +186,7 @@ class HashlistsLoaderThread(CommonThread):
         :return:
         """
         self.update_status('searchfound')
-        Registry().get('logger').log("hashlist_loader", "Search already found hashes")
+        self.log("Search already found hashes")
 
         similar_hashes = self._db.fetch_all(
             "SELECT hash, salt, password, summ FROM `hashes` h, hashlists hl "
@@ -226,10 +226,10 @@ class HashlistsLoaderThread(CommonThread):
 
                     hashlist = self.get_current_hashlist_data()
 
-                    Registry().get('logger').log("hashlist_loader", "Found hashlist #{0}/{1} for work".format(
+                    self.log("Found hashlist #{0}/{1} for work".format(
                         self.current_hashlist_id, hashlist['name']))
                     if not len(hashlist['tmp_path']) or not os.path.exists(hashlist['tmp_path']):
-                        Registry().get('logger').log("hashlist_loader", "ERR: path not exists #{0}/'{1}'".format(
+                        self.log("ERR: path not exists #{0}/'{1}'".format(
                             self.current_hashlist_id, hashlist['tmp_path']))
 
                         self.update_status("errpath")
@@ -251,7 +251,7 @@ class HashlistsLoaderThread(CommonThread):
                     self.update_hashlist_field('tmp_path', '')
                     os.remove(hashlist['tmp_path'])
 
-                    Registry().get('logger').log("hashlist_loader", "Work for hashlist {0}/{1} done".format(
+                    self.log("Work for hashlist {0}/{1} done".format(
                         self.current_hashlist_id, hashlist['name']))
 
                 time.sleep(self.delay_per_check)

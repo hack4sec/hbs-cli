@@ -139,14 +139,14 @@ class ResultParseThread(CommonThread):
         try:
             while self.available:
                 if self.get_waiting_task_for_work():
-                    Registry().get('logger').log("result_parser", "Getted result of task #{0}".format(self.get_current_work_task_id()))
+                    self.log("Getted result of task #{0}".format(self.get_current_work_task_id()))
                     self.update_status("outparsing")
 
                     work_task = self.get_work_task_data()
                     hashlist = self.get_hashlist_data(work_task['hashlist_id'])
 
                     if len(work_task['out_file']) and os.path.exists(work_task['out_file']):
-                        Registry().get('logger').log("result_parser", "Start put found passwords info DB")
+                        self.log("Start put found passwords info DB")
 
                         self.parse_outfile_and_fill_found_hashes(work_task, hashlist)
 
@@ -160,9 +160,9 @@ class ResultParseThread(CommonThread):
                         self.update_all_hashlists_counts_by_alg_id(hashlist['alg_id'])
                     else:
                         self.update_status('done')
-                        Registry().get('logger').log("result_parser", "Outfile {0} not exists".format(work_task['out_file']))
+                        self.log("Outfile {0} not exists".format(work_task['out_file']))
 
-                        Registry().get('logger').log("result_parser", "Work for task #{0} done".format(self.get_current_work_task_id()))
+                        self.log("Work for task #{0} done".format(self.get_current_work_task_id()))
 
                 time.sleep(self.delay_per_check)
         except BaseException as ex:

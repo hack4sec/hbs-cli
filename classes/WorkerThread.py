@@ -237,10 +237,10 @@ class WorkerThread(CommonThread):
             ))
 
             self.update_task_props({'process_status': "preparedicts"})
-            Registry().get('logger').log("worker", "Create symlinks dicts dir {0}".format(tmp_dicts_dir))
+            self.log("Create symlinks dicts dir {0}".format(tmp_dicts_dir))
 
             if os.path.exists(tmp_dicts_dir):
-                Registry().get('logger').log("worker", "Remove old symlinks dicts dir {0}".format(tmp_dicts_dir))
+                self.log("Remove old symlinks dicts dir {0}".format(tmp_dicts_dir))
                 shutil.rmtree(tmp_dicts_dir)
             os.mkdir(tmp_dicts_dir)
 
@@ -261,16 +261,16 @@ class WorkerThread(CommonThread):
         path_to_hybride_dict = "{0}/{1}.hybride".format(self.tmp_dir, gen_random_md5())
 
         cat_cmd = "cat {0}/* > {1}-unsorted".format(tmp_dicts_dir, path_to_hybride_dict)
-        Registry().get('logger').log("worker", "Compile hybride dict by cmd: \n{0}".format(cat_cmd))
+        self.log("Compile hybride dict by cmd: \n{0}".format(cat_cmd))
         check_output(cat_cmd, shell=True)
 
         sort_cmd = "sort {0}-unsorted > {0}".format(path_to_hybride_dict)
-        Registry().get('logger').log("worker", "Sort dict by cmd: \n{0}".format(sort_cmd))
+        self.log("Sort dict by cmd: \n{0}".format(sort_cmd))
         check_output(sort_cmd, shell=True)
 
         os.remove("{0}-unsorted".format(path_to_hybride_dict))
 
-        Registry().get('logger').log("worker", "Cat and sort done".format(sort_cmd))
+        self.log("Cat and sort done".format(sort_cmd))
 
         return path_to_hybride_dict
 
@@ -303,7 +303,7 @@ class WorkerThread(CommonThread):
 
         cmd_template.append("--session={0}".format(self.work_task['session_name']))
         if not task_is_new:
-            Registry().get('logger').log("worker", "Restore {0}".format(self.work_task['session_name']))
+            self.log("Restore {0}".format(self.work_task['session_name']))
             cmd_template.append("--restore")
 
         if task['type'] == 'dict':
@@ -354,16 +354,14 @@ class WorkerThread(CommonThread):
     def run(self):
         """ Start method of thread """
         try:
-            Registry().get('logger').log("worker", "Run thread with work_task id: {0}".format(self.work_task['id']))
+            self.log("Run thread with work_task id: {0}".format(self.work_task['id']))
 
             uncracked_in_hashlist = self._db.fetch_one(
                 "SELECT uncracked FROM hashlists WHERE id = {0}".format(self.work_task['hashlist_id']))
             if uncracked_in_hashlist == 0:
                 self._db.q("UPDATE task_works SET status='done' WHERE id = {0}".format(self.work_task['id']))
-                Registry().get('logger').log(
-                    "worker",
-                    "Work task {0} blank, because hashlist {1} not contains uncracked hashes".format(
-                        self.work_task['id'], self.work_task['hashlist_id']))
+                self.log("Work task {0} blank, because hashlist {1} not contains uncracked hashes".format(
+                    self.work_task['id'], self.work_task['hashlist_id']))
                 self.done = True
                 return
 
@@ -399,20 +397,18 @@ class WorkerThread(CommonThread):
             os.chdir(self.path_to_hc)
 
             task = self.get_task_data_by_id(self.work_task['task_id'])
-            Registry().get('logger').log("worker",
-                                         "Source task id/source: {0}/{1}/{2}".format(
-                                             task['id'], task['type'], task['source']))
+            self.log("Source task id/source: {0}/{1}/{2}".format(task['id'], task['type'], task['source']))
 
             self.update_task_props({'process_status': "buildhashlist"})
             path_to_hashlist = self.make_hashlist()
-            Registry().get('logger').log("worker", "Hashlist created")
+            self.log("Hashlist created")
 
             self.update_task_props({'process_status': "compilecommand"})
-            Registry().get('logger').log("worker", "Compile command")
+            self.log("Compile command")
 
             cmd_to_run = self.build_cmd(task, task_is_new, path_to_hashlist)
 
-            Registry().get('logger').log("worker", "Will run: " + " ".join(cmd_to_run))
+            self.log("Will run: " + " ".join(cmd_to_run))
             fh_output.write(" ".join(cmd_to_run) + "\n")
 
             stime = int(time.time())
@@ -427,13 +423,13 @@ class WorkerThread(CommonThread):
                 self.refresh_work_task()
 
                 if not process_stoped and self.work_task['status'] in ['go_stop', 'stop']:
-                    Registry().get('logger').log("worker", "Stop signal ")
+                    self.log("Stop signal ")
                     p.stdin.write('q')
                     process_stoped = True
 
                 if self.not_high_priority():
                     stop_by_priority = True
-                    Registry().get('logger').log("worker", "Have most priority task: {0}".format(self.not_high_priority()))
+                    self.log("Have most priority task: {0}".format(self.not_high_priority()))
                     p.stdin.write('q')
                     process_stoped = True
 
@@ -463,12 +459,12 @@ class WorkerThread(CommonThread):
 
             fh_output.close()
 
-            Registry().get('logger').log("worker", "Task done, wait load cracked hashes, worker go to next task")
+            self.log("Task done, wait load cracked hashes, worker go to next task")
 
-            Registry().get('logger').log("worker", "Change task status")
+            self.log("Change task status")
             self.change_task_status(stop_by_priority, process_stoped)
 
-            Registry().get('logger').log("worker", "Clean file with stdout")
+            self.log("Clean file with stdout")
             self.clean_stdout_file()
 
             if self.work_task['status'] == 'waitoutparse':
@@ -486,11 +482,11 @@ class WorkerThread(CommonThread):
                 self.update_task_props({'hybride_dict': ''})
 
             if self.work_task['status'] == 'waitoutparse':
-                Registry().get('logger').log("worker", "Work task {0} done\n".format(self.work_task['id']))
+                self.log("Work task {0} done\n".format(self.work_task['id']))
             elif self.work_task['status'] == 'wait':
-                Registry().get('logger').log("worker", "Work task {0} return to wait\n".format(self.work_task['id']))
+                self.log("Work task {0} return to wait\n".format(self.work_task['id']))
             elif self.work_task['status'] == 'stop':
-                Registry().get('logger').log("worker", "Work task {0} stopped\n".format(self.work_task['id']))
+                self.log("Work task {0} stopped\n".format(self.work_task['id']))
 
             self.done = True
         except BaseException as ex:

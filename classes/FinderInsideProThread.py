@@ -35,7 +35,7 @@ class FinderInsideProThread(CommonThread):
         self._db = Factory().new_db_connect()
 
         self.finder = FinderInsidePro(config['main']['finder_key'])
-        Registry().get('logger').log("finderinsidepro", "Remain passwords: {0}".format(self.finder.remain))
+        self.log("Remain passwords: {0}".format(self.finder.remain))
 
     def is_alg_in_parse(self, alg_id):
         """
@@ -114,14 +114,14 @@ class FinderInsideProThread(CommonThread):
             while self.available:
                 hashlists = self.get_ready_common_hashlists()
                 for hashlist in hashlists:
-                    Registry().get('logger').log("finderinsidepro", "Got hashlist {0} with alg {1}".format(
+                    self.log("Got hashlist {0} with alg {1}".format(
                         hashlist['id'], hashlist['alg_id']
                     ))
 
                     found_count = 0
                     all_count = 0
                     if self.is_alg_in_parse(hashlist['alg_id']):
-                        Registry().get('logger').log("finderinsidepro", "Alg in parse, skip hashlist {0} with alg {1}".format(
+                        self.log("Alg in parse, skip hashlist {0} with alg {1}".format(
                             hashlist['id'], hashlist['alg_id']
                         ))
                         continue
@@ -151,7 +151,7 @@ class FinderInsideProThread(CommonThread):
                                 found_hashes = self.finder.search_hashes(hashes_to_finder, hc_alg_id)
                             except FinderInsideProException as ex:
                                 if ex.extype == FinderInsideProException.TYPE_SMALL_REMAIN:
-                                    Registry().get('logger').log("finderinsidepro", str(ex))
+                                    self.log(str(ex))
                                     break
                                 else:
                                     raise ex
@@ -167,14 +167,14 @@ class FinderInsideProThread(CommonThread):
                             found_hashes = self.finder.search_hashes(hashes_to_finder, hc_alg_id)
                         except FinderInsideProException as ex:
                             if ex.extype == FinderInsideProException.TYPE_SMALL_REMAIN:
-                                Registry().get('logger').log("finderinsidepro", str(ex))
+                                self.log(str(ex))
                                 break
                             else:
                                 raise ex
                         found_count += len(found_hashes)
                         self.put_found_hashes_in_db(hashlist['alg_id'], found_hashes)
 
-                    Registry().get('logger').log("finderinsidepro", "For hashlist {0} with alg {1} found {2} from {3}".format(
+                    self.log("For hashlist {0} with alg {1} found {2} from {3}".format(
                         hashlist['id'], hashlist['alg_id'], found_count, all_count
                     ))
 

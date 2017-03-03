@@ -127,8 +127,7 @@ class HashlistsByAlgLoaderThread(CommonThread):
                 continue
 
             if self.is_alg_in_parse(alg_id):
-                Registry().get('logger').log(
-                    "hashlist_common_loader",
+                self.log(
                     "Skip alg, it parsing or wait parse #{0}".format(
                         alg_id
                     )
@@ -137,8 +136,7 @@ class HashlistsByAlgLoaderThread(CommonThread):
 
             if hashlist_id == self.get_current_work_hashlist() or \
                             self.get_hashlist_status(hashlist_id) != 'ready':
-                Registry().get('logger').log(
-                    "hashlist_common_loader",
+                self.log(
                     "Skip it, it in work or not ready #{0}/{1}/{2}".format(
                         hashlist_id,
                         self.get_current_work_hashlist(),
@@ -147,8 +145,7 @@ class HashlistsByAlgLoaderThread(CommonThread):
                 )
                 continue
 
-            Registry().get('logger').log(
-                "hashlist_common_loader",
+            self.log(
                 "Build list for alg #{0} ({1} vs {2})".format(
                     alg_id,
                     hashes_count_in_hashlist,
@@ -206,17 +203,17 @@ class HashlistsByAlgLoaderThread(CommonThread):
                     # Mark as 'parsing' for HashlistsLoader don`t get it to work before we done
                     self._db.update("hashlists", {'parsed': 0, 'status': 'parsing'}, "id = {0}".format(hashlist_id))
 
-                    Registry().get('logger').log("hashlist_common_loader", "Delete old hashes of #{0}".format(hashlist_id))
+                    self.log("Delete old hashes of #{0}".format(hashlist_id))
                     self.clean_old_hashes(hashlist_id)
 
-                    Registry().get('logger').log("hashlist_common_loader", "Put data in file for #{0}".format(hashlist_id))
+                    self.log("Put data in file for #{0}".format(hashlist_id))
                     tmp_path = self.put_all_hashes_of_alg_in_file(alg_id)
 
                     self._db.update("hashlists",
                                     {'status': 'wait', 'tmp_path': tmp_path, "when_loaded": int(time.time())},
                                     "id = {0}".format(hashlist_id))
 
-                    Registry().get('logger').log("hashlist_common_loader", "Done #{0}".format(hashlist_id))
+                    self.log("Done #{0}".format(hashlist_id))
 
                 time.sleep(self.delay_per_check)
         except BaseException as ex:
