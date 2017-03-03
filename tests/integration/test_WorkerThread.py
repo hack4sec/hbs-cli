@@ -173,3 +173,35 @@ class Test_WorkerThread(CommonIntegration):
         assert wtask['uncracked_before'] == 4
         assert os.path.exists(wtask['out_file'])
         assert file_get_contents(wtask['out_file']) == '49a14108270c0596ac1d70c3c4f82a10:31636363\n'
+
+    def test_blank_hashlist(self):
+        """ Run task with blank hashlist """
+        self._add_hashlist(alg_id=0)
+        self._add_work_task()
+
+        dicts_path = Registry().get('config')['main']['dicts_path']
+
+        self._add_dict_group()
+
+        self._add_dict()
+        self._add_dict(id=2, hash='2')
+        file_put_contents(dicts_path + "/1.dict", "aaa\nbbb")
+        file_put_contents(dicts_path + "/2.dict", "ccc\nddd")
+
+        self._add_task(source=1)
+
+        self.thrd = WorkerThread(self.db.fetch_row("SELECT * FROM task_works WHERE id = 1"))
+        self.thrd.start()
+
+        start_time = int(time.time())
+        while True:
+            if self.thrd.done:
+                break
+            if int(time.time()) - start_time > 5:
+                pytest.fail("Long time of WorkerThread")
+            time.sleep(1)
+
+        wtask = self.db.fetch_row("SELECT * FROM task_works WHERE id = 1")
+        assert wtask['status'] == 'done'
+        assert wtask['uncracked_before'] == 0
+        assert len(wtask['out_file']) == 0

@@ -19,7 +19,6 @@ import json
 from subprocess import Popen, PIPE, check_output
 from classes.Registry import Registry
 from classes.HbsException import HbsException
-from classes.Logger import Logger
 from classes.Factory import Factory
 
 from libs.common import gen_random_md5
@@ -349,10 +348,20 @@ class WorkerThread(threading.Thread):
 
         return cmd_to_run
 
-
     def run(self):
         """ Start method of thread """
         Registry().get('logger').log("worker", "Run thread with work_task id: {0}".format(self.work_task['id']))
+
+        uncracked_in_hashlist = self._db.fetch_one(
+            "SELECT uncracked FROM hashlists WHERE id = {0}".format(self.work_task['hashlist_id']))
+        if uncracked_in_hashlist == 0:
+            self._db.q("UPDATE task_works SET status='done' WHERE id = {0}".format(self.work_task['id']))
+            Registry().get('logger').log(
+                "worker",
+                "Work task {0} blank, because hashlist {1} not contains uncracked hashes".format(
+                    self.work_task['id'], self.work_task['hashlist_id']))
+            self.done = True
+            return
 
         task_is_new = not len(self.work_task['session_name'])
         if task_is_new:
@@ -386,7 +395,9 @@ class WorkerThread(threading.Thread):
         os.chdir(self.path_to_hc)
 
         task = self.get_task_data_by_id(self.work_task['task_id'])
-        Registry().get('logger').log("worker", "Source task id/source: {0}/{1}/{2}".format(task['id'], task['type'], task['source']))
+        Registry().get('logger').log("worker",
+                                     "Source task id/source: {0}/{1}/{2}".format(
+                                         task['id'], task['type'], task['source']))
 
         self.update_task_props({'process_status': "buildhashlist"})
         path_to_hashlist = self.make_hashlist()

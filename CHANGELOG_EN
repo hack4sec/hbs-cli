@@ -1,4 +1,5 @@
 v0.3a dev:
+ If work task has blank hashlist, hbs skip it and mark task as done
  Files of logs and sessions (hc work files) remove after task work done
  Fixed hybride dicts remove mechanism after end of work. Now it delete after work task done.
  Wait time on deadlock (before request retry) can be setted in config.ini
