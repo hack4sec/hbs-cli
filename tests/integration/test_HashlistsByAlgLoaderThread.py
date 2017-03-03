@@ -91,6 +91,7 @@ class Test_HashlistsByAlgLoaderThread(CommonIntegration):
                               'cracked': 0, 'uncracked': 2, 'errors': '', 'parsed': 1, 'status': 'ready',
                               'common_by_alg': 3}
         hashlist_data = self.db.fetch_row("SELECT * FROM hashlists WHERE common_by_alg")
+        assert int(self.db.fetch_one("SELECT when_loaded FROM hashlists WHERE common_by_alg")) > 0
 
         for field in test_hashlist_data:
             assert hashlist_data[field] == test_hashlist_data[field]

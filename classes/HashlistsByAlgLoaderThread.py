@@ -213,7 +213,9 @@ class HashlistsByAlgLoaderThread(threading.Thread):
                 Registry().get('logger').log("hashlist_common_loader", "Put data in file for #{0}".format(hashlist_id))
                 tmp_path = self.put_all_hashes_of_alg_in_file(alg_id)
 
-                self._db.update("hashlists", {'status': 'wait', 'tmp_path': tmp_path}, "id = {0}".format(hashlist_id))
+                self._db.update("hashlists",
+                                {'status': 'wait', 'tmp_path': tmp_path, "when_loaded": int(time.time())},
+                                "id = {0}".format(hashlist_id))
 
                 Registry().get('logger').log("hashlist_common_loader", "Done #{0}".format(hashlist_id))
 

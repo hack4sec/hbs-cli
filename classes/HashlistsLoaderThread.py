@@ -241,7 +241,7 @@ class HashlistsLoaderThread(threading.Thread):
 
                 put_in_db_path = self.sorted_file_to_db_file(sorted_path, hashlist)
 
-                self.load_file_in_db(put_in_db_path, hashlist)
+                self.load_file_in_db(put_in_db_path)
 
                 self.find_similar_found_hashes(hashlist)
 
