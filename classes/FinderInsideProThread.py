@@ -37,6 +37,7 @@ class FinderInsideProThread(threading.Thread):
         self._db = Factory().new_db_connect()
 
         self.finder = FinderInsidePro(config['main']['finder_key'])
+        Registry().get('logger').log("finderinsidepro", "Remain passwords: {0}".format(self.finder.remain))
 
     def is_alg_in_parse(self, alg_id):
         """

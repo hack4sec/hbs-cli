@@ -41,6 +41,7 @@ class FinderInsidePro(object):
     """ Class with API for finder.insidepro.com """
     key = ''
     session_id = ''
+    remain = 0
 
     hashes_per_once_limit = 1000
 
@@ -94,7 +95,8 @@ class FinderInsidePro(object):
         data = self.get_xml_from_server("http://finder.insidepro.com/api/limit?apikey={0}".format(self.key))
         try:
             xml = etree.fromstring(data.encode('utf-8'))
-            return int(xml.xpath('//data/hash_search/remain')[0].text)
+            self.remain = int(xml.xpath('//data/hash_search/remain')[0].text)
+            return self.remain
         except (etree.XMLSyntaxError, ValueError) as ex:
             raise FinderInsideProException("XML parse error with '{0}' data and str '{1}'".format(data, str(ex)))
 
