@@ -114,12 +114,23 @@ class FinderInsideProThread(threading.Thread):
         while self.available:
             hashlists = self.get_ready_common_hashlists()
             for hashlist in hashlists:
+                Registry().get('logger').log("finderinsidepro", "Got hashlist {0} with alg {1}".format(
+                    hashlist['id'], hashlist['alg_id']
+                ))
+
                 found_count = 0
                 all_count = 0
                 if self.is_alg_in_parse(hashlist['alg_id']):
+                    Registry().get('logger').log("finderinsidepro", "Alg in parse, skip hashlist {0} with alg {1}".format(
+                        hashlist['id'], hashlist['alg_id']
+                    ))
                     continue
 
+                self._db.update("hashlists", {'status': 'parsing'}, 'id = {0}'.format(hashlist['id']))
+
                 hc_alg_id = self._db.fetch_one("SELECT alg_id FROM algs WHERE id = {0}".format(hashlist['alg_id']))
+
+                self.finder.create_session(hc_alg_id)
 
                 path_to_hashlist_file = self.make_hashlist(hashlist['id'])
 
@@ -167,7 +178,9 @@ class FinderInsideProThread(threading.Thread):
                     hashlist['id'], hashlist['alg_id'], found_count, all_count
                 ))
 
-                self._db.update("hashlists", {"last_finder_checked": int(time.time())}, "id = " + str(hashlist['id']))
+                self._db.update("hashlists",
+                                {"status": "ready", "last_finder_checked": int(time.time())},
+                                "id = " + str(hashlist['id']))
 
                 fh.close()
 

@@ -185,4 +185,9 @@ class FinderInsidePro(object):
                 if ex.extype == FinderInsideProException.TYPE_SESSION_IS_WRONG:
                     raise FinderInsideProException('Can`t create session, fatal error')
 
-        return self.parse_and_fill_hashes_from_xml(xml.encode('utf-8'), hashes)
+        try:
+            to_return = self.parse_and_fill_hashes_from_xml(xml.encode('utf-8'), hashes)
+        except etree.XMLSyntaxError:
+            to_return = []
+
+        return to_return
