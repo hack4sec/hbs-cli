@@ -18,8 +18,8 @@ class Database(object):
     """ Api for work with DB """
 
     _db = None
-    _restart_by_deadlock_limit = 10
-    _sleep_by_deadlock_restart = 60
+    _restart_by_deadlock_limit = None
+    _sleep_by_deadlock_restart = None
 
     def __init__(self, host, user, password, basename):
         self._db = mysql.connector.connect(
@@ -30,6 +30,9 @@ class Database(object):
             #raise_on_warnings=True,
         )
         self._db.autocommit = True
+
+        self._restart_by_deadlock_limit = int(Registry().get('config')['main']['restarts_by_deadlock_limit'])
+        self._sleep_by_deadlock_restart = int(Registry().get('config')['main']['sleep_by_deadlock_restart'])
 
     def q(self, sql, return_curs=False):
         """ Usual query, return cursor """

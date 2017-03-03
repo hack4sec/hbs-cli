@@ -1,4 +1,5 @@
 v0.3a dev:
+ Wait time on deadlock (before request retry) can be setted in config.ini
  Output logging into database added, all write in table `logs`
  Integration with finder.insidepro.com added. See docs.
  Dict for hybride attacks sort after compile
