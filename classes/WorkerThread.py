@@ -456,6 +456,14 @@ class WorkerThread(threading.Thread):
         Registry().get('logger').log("worker", "Clean file with stdout")
         self.clean_stdout_file()
 
+        if self.work_task['status'] == 'waitoutparse':
+            session_file = "{0}/{1}.restore".format(self.path_to_hc, self.work_task['session_name'])
+            if os.path.exists(session_file):
+                os.remove(session_file)
+            log_file = "{0}/{1}.log".format(self.path_to_hc, self.work_task['session_name'])
+            if os.path.exists(log_file):
+                os.remove(log_file)
+
         if self.work_task['status'] == 'waitoutparse' and \
                 len(self.work_task['hybride_dict']) and \
                 os.path.exists(self.work_task['hybride_dict']):
