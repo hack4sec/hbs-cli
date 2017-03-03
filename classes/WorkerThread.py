@@ -462,5 +462,11 @@ class WorkerThread(threading.Thread):
             os.remove(self.work_task['hybride_dict'])
             self.update_task_props({'hybride_dict': ''})
 
-        Registry().get('logger').log("worker", "Done\n")
+        if self.work_task['status'] == 'waitoutparse':
+            Registry().get('logger').log("worker", "Work task {0} done\n".format(self.work_task['id']))
+        elif self.work_task['status'] == 'wait':
+            Registry().get('logger').log("worker", "Work task {0} return to wait\n".format(self.work_task['id']))
+        elif self.work_task['status'] == 'stop':
+            Registry().get('logger').log("worker", "Work task {0} stopped\n".format(self.work_task['id']))
+
         self.done = True
