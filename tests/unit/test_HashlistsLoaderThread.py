@@ -142,7 +142,7 @@ class Test_HashlistsLoaderThread(CommonUnit):
             assert test_hash['salt'] == test_row['salt']
         assert self.db.fetch_one("SELECT COUNT(id) FROM hashes") == 3
 
-        assert not os.path.exists('/tmp/test1.txt')
+        assert os.path.exists('/tmp/test1.txt')
 
     def test_find_similar_found_hashes(self):
         """ Test  find_similar_found_hashes() """
