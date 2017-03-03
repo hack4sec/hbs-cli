@@ -152,11 +152,10 @@ class HashlistsLoaderThread(threading.Thread):
 
         return put_in_db_path
 
-    def load_file_in_db(self, file_path, hashlist):
+    def load_file_in_db(self, file_path):
         """
         Import in-db file in database with mysqlimport util
         :param file_path:
-        :param hashlist: hashlist data
         :return:
         """
         self.update_status('putindb')
@@ -181,7 +180,6 @@ class HashlistsLoaderThread(threading.Thread):
         subprocess.check_output(importcmd, shell=True)
 
         os.remove(hashes_file_path)
-        os.remove(hashlist['tmp_path'])
 
     def find_similar_found_hashes(self, hashlist):
         """
@@ -252,6 +250,7 @@ class HashlistsLoaderThread(threading.Thread):
                 self.parsed_flag(1)
                 self.update_status('ready')
                 self.update_hashlist_field('tmp_path', '')
+                os.remove(hashlist['tmp_path'])
 
                 Registry().get('logger').log("hashlist_loader", "Work for hashlist {0}/{1} done".format(
                     self.current_hashlist_id, hashlist['name']))

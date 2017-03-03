@@ -134,7 +134,7 @@ class Test_HashlistsLoaderThread(CommonUnit):
         file_put_contents(test_file, content)
         file_put_contents('/tmp/test1.txt', '')
 
-        self.thrd.load_file_in_db(test_file, {'tmp_path': '/tmp/test1.txt'})
+        self.thrd.load_file_in_db(test_file)
 
         for test_hash in expected_hashes:
             test_row = self.db.fetch_row("SELECT id, hash, salt FROM hashes WHERE id = {0}".format(test_hash['id']))
