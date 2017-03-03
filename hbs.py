@@ -16,6 +16,7 @@ import os
 import subprocess
 
 import configparser
+import mysql.connector
 
 from classes.Factory import Factory
 from classes.Registry import Registry
@@ -30,7 +31,11 @@ config = configparser.ConfigParser()
 config.read(os.getcwd() + '/' + 'config.ini')
 Registry().set('config', config)
 
-db = Factory().new_db_connect()
+try:
+    db = Factory().new_db_connect()
+except mysql.connector.errors.ProgrammingError as ex:
+    print "ERROR: Check db connection data: {0}".format(str(ex))
+    exit(0)
 
 if not os.path.exists(config['main']['tmp_dir']):
     print "ERROR: Tmp path {0} is not exists!".format(config['main']['tmp_dir'])
