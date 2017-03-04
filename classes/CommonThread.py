@@ -12,6 +12,7 @@ import threading
 import traceback
 
 from classes.Registry import Registry
+from classes.Factory import Factory
 
 class CommonThread(threading.Thread):
     """ Parent for all threads """
@@ -25,8 +26,33 @@ class CommonThread(threading.Thread):
 
     thread_name = ""
 
+    _db = None
+
+    tmp_dir = None
+    dicts_path = None
+    outs_path = None
+    rules_path = None
+    path_to_hc = None
+    hc_bin = None
+    finder_key = None
+
+    config = None
+
     def __init__(self):
         threading.Thread.__init__(self)
+
+        self._db = Factory().new_db_connect()
+
+        config = Registry().get('config')
+        self.tmp_dir = config['main']['tmp_dir']
+        self.dicts_path = config['main']['dicts_path']
+        self.outs_path = config['main']['outs_path']
+        self.rules_path = config['main']['rules_path']
+        self.path_to_hc = config['main']['path_to_hc']
+        self.hc_bin = config['main']['hc_bin']
+        self.finder_key = config['main']['finder_key']
+
+        self.config = config
 
     def exception(self, ex):
         """

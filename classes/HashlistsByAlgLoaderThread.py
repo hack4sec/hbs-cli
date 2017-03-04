@@ -27,17 +27,8 @@ class HashlistsByAlgLoaderThread(CommonThread):
     def __init__(self):
         """ Initialization """
         CommonThread.__init__(self)
-        config = Registry().get('config')
 
-        self.tmp_dir = config['main']['tmp_dir']
-        self.dicts_path = config['main']['dicts_path']
-        self.outs_path = config['main']['outs_path']
-        self.rules_path = config['main']['rules_path']
-        self.path_to_hc = config['main']['path_to_hc']
-        self.hc_bin = config['main']['hc_bin']
-        self.delay_per_check = int(config['main']['hashlists_by_alg_loader_delay_per_try'])
-
-        self._db = Factory().new_db_connect()
+        self.delay_per_check = int(self.config['main']['hashlists_by_alg_loader_delay_per_try'])
 
     def get_common_hashlist_id_by_alg(self, alg_id):
         """

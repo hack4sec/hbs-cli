@@ -15,7 +15,6 @@ import os
 import shutil
 import re
 import json
-import traceback
 
 from subprocess import Popen, PIPE, check_output
 from classes.Registry import Registry
@@ -25,11 +24,11 @@ from classes.CommonThread import CommonThread
 
 from libs.common import gen_random_md5
 
+
 class WorkerThread(CommonThread):
     """ Main work thread - run hc, control work, etc """
     work_task = None
     done = False
-    _db = None
     status_time = 4
     out_buff_len = 600
     tmp_dir = None
@@ -46,15 +45,6 @@ class WorkerThread(CommonThread):
         """
         CommonThread.__init__(self)
         self.work_task = work_task
-        self._db = Factory().new_db_connect()
-
-        config = Registry().get('config')
-        self.tmp_dir = config['main']['tmp_dir']
-        self.dicts_path = config['main']['dicts_path']
-        self.outs_path = config['main']['outs_path']
-        self.rules_path = config['main']['rules_path']
-        self.path_to_hc = config['main']['path_to_hc']
-        self.hc_bin = config['main']['hc_bin']
 
     def clean_stdout_file(self):
         """ Clean stdout file from status-automate entries """

@@ -28,16 +28,8 @@ class ResultParseThread(CommonThread):
     def __init__(self):
         """ Initialization """
         CommonThread.__init__(self)
-        self._db = Factory().new_db_connect()
 
-        config = Registry().get('config')
-        self.tmp_dir = config['main']['tmp_dir']
-        self.dicts_path = config['main']['dicts_path']
-        self.outs_path = config['main']['outs_path']
-        self.rules_path = config['main']['rules_path']
-        self.path_to_hc = config['main']['path_to_hc']
-        self.hc_bin = config['main']['hc_bin']
-        self.delay_per_check = int(config['main']['results_parser_delay_per_try'])
+        self.delay_per_check = int(self.config['main']['results_parser_delay_per_try'])
 
     def update_status(self, status):
         """

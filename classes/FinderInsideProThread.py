@@ -26,15 +26,10 @@ class FinderInsideProThread(CommonThread):
 
     def __init__(self):
         CommonThread.__init__(self)
-        config = Registry().get('config')
 
-        self.tmp_dir = config['main']['tmp_dir']
-        self.finder_key = config['main']['finder_key']
-        self.delay_per_check = int(config['main']['finder_insidepro_delay_per_try'])
+        self.delay_per_check = int(self.config['main']['finder_insidepro_delay_per_try'])
 
-        self._db = Factory().new_db_connect()
-
-        self.finder = FinderInsidePro(config['main']['finder_key'])
+        self.finder = FinderInsidePro(self.config['main']['finder_key'])
         self.log("Remain passwords: {0}".format(self.finder.remain))
 
     def is_alg_in_parse(self, alg_id):
