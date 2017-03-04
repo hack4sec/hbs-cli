@@ -355,6 +355,12 @@ class WorkerThread(CommonThread):
                 self.done = True
                 return
 
+            if len(self.work_task['session_name']) and \
+                    not os.path.exists("{0}/{1}.restore".format(self.path_to_hc, self.work_task['session_name'])):
+                self.log("Work task {0} has wrong session id".format(
+                    self.work_task['id'], self.work_task['session_name']))
+                self.update_task_props({'session_name': ''})
+
             task_is_new = not len(self.work_task['session_name'])
             if task_is_new:
                 session_name = gen_random_md5()

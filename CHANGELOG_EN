@@ -2,6 +2,7 @@ v0.3a dev:
  Threads now log exception and main script resurect them
  If work task has blank hashlist, hbs skip it and mark task as done
  Files of logs and sessions (hc work files) remove after task work done
+ Fixed bug with broken session create when hc can`t start
  Fixed hybride dicts remove mechanism after end of work. Now it delete after work task done.
  Wait time on deadlock (before request retry) can be setted in config.ini
  Output logging into database added, all write in table `logs`
