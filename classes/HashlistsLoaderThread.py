@@ -111,6 +111,10 @@ class HashlistsLoaderThread(CommonThread):
         for _line in fh_sorted:
             _hash = None
             _line = _line.strip()
+
+            if len(_line) == 0 or (int(hashlist['have_salts']) and _line == hashlist['delimiter']):
+                continue
+
             if int(hashlist['have_salts']):
                 if _line.count(hashlist['delimiter']):
                     _hash = _line[:_line.index(hashlist['delimiter'])]
