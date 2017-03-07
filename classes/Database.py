@@ -20,19 +20,31 @@ class Database(object):
     _db = None
     _restart_by_deadlock_limit = None
     _sleep_by_deadlock_restart = None
+    _host = None
+    _user = None
+    _password = None
+    _basename = None
 
     def __init__(self, host, user, password, basename):
-        self._db = mysql.connector.connect(
-            host=host,
-            user=user,
-            password=password,
-            database=basename,
-            #raise_on_warnings=True,
-        )
-        self._db.autocommit = True
+        self._host = host
+        self._user = user
+        self._password = password
+        self._basename = basename
+
+        self.connect()
 
         self._restart_by_deadlock_limit = int(Registry().get('config')['main']['restarts_by_deadlock_limit'])
         self._sleep_by_deadlock_restart = int(Registry().get('config')['main']['sleep_by_deadlock_restart'])
+
+    def connect(self):
+        self._db = mysql.connector.connect(
+            host=self._host,
+            user=self._user,
+            password=self._password,
+            database=self._basename,
+            #raise_on_warnings=True,
+        )
+        self._db.autocommit = True
 
     def q(self, sql, return_curs=False):
         """ Usual query, return cursor """
@@ -51,6 +63,13 @@ class Database(object):
                         continue
                 else:
                     raise e
+            except mysql.connector.errors.OperationalError as ex:
+                if "MySQL Connection not available" in str(ex):
+                    self.connect()
+                    Registry().get('logger').log("database", "Reconnect on '{0}'".format(sql))
+                    return self.q(sql, return_curs)
+                else:
+                    raise ex
             break
         if return_curs:
             return curs
