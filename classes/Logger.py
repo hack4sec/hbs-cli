@@ -36,7 +36,7 @@ class Logger(object):
     ]
 
     def __init__(self):
-        self._db = Registry().get('db')
+        self._db = Factory().new_db_connect()
 
     def log(self, module, message):
         """
