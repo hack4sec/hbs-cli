@@ -154,7 +154,7 @@ class ResultParseThread(CommonThread):
                         self.update_status('done')
                         self.log("Outfile {0} not exists".format(work_task['out_file']))
 
-                        self.log("Work for task #{0} done".format(self.get_current_work_task_id()))
+                    self.log("Work for task #{0} done".format(self.get_current_work_task_id()))
 
                 time.sleep(self.delay_per_check)
         except BaseException as ex:
