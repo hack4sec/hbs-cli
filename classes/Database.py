@@ -52,6 +52,13 @@ class Database(object):
             try:
                 curs = self._db.cursor(buffered=True)
                 curs.execute(sql)
+            except mysql.connector.errors.OperationalError as ex:
+                if "MySQL Connection not available" in str(ex):
+                    self.connect()
+                    Registry().get('logger').log("database", "Reconnect on '{0}'".format(sql))
+                    return self.q(sql, return_curs)
+                else:
+                    raise ex
             except mysql.connector.errors.DatabaseError as e:
                 if str(e).count("Lock wait timeout exceeded") or str(e).count("Deadlock found when trying to get lock"):
                     Registry().get('logger').log("database", "Deadlock '{0}', try {1} ".format(sql, i))
@@ -63,13 +70,6 @@ class Database(object):
                         continue
                 else:
                     raise e
-            except mysql.connector.errors.OperationalError as ex:
-                if "MySQL Connection not available" in str(ex):
-                    self.connect()
-                    Registry().get('logger').log("database", "Reconnect on '{0}'".format(sql))
-                    return self.q(sql, return_curs)
-                else:
-                    raise ex
             break
         if return_curs:
             return curs
