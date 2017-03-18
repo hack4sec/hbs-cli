@@ -1,22 +1,22 @@
-v0.3a dev:
- Fixed bug with blank hashes in db from import process (imported hashlist contains blank lines)
+v0.3a:
  Threads now log exception and main script resurect them
  If work task has blank hashlist, hbs skip it and mark task as done
  Files of logs and sessions (hc work files) remove after task work done
  Fixed bug with broken session create when hc can`t start
- Fixed hybride dicts remove mechanism after end of work. Now it delete after work task done.
  Wait time on deadlock (before request retry) can be setted in config.ini
  Output logging into database added, all write in table `logs`
  Integration with finder.insidepro.com added. See docs.
  Dict for hybride attacks sort after compile
  Hashlists load in db with console mysqlimport tool
  Work task will not start if other work tasks with same alg parsing outfile or wait outfile parse.
+ Сommon hashlists (by alg_id) not building if results of brute of this alg now parsing
+ Fixed bug with blank hashes in db from import process (imported hashlist contains blank lines)
+ Fixed hybride dicts remove mechanism after end of work. Now it delete after work task done.
  Fixed commons hashlists (by alg_id) bug then HBS try delete hashes of not exists hashlist
  Fixed commons hashlists (by alg_id) bug then busy of alg (it parsing or wait parsing) checked only if common hashlist already exists
  Fixed commons hashlists (by alg_id) bug then count of hashes getted by hashes, not summs
  Fixed commons hashlists (by alg_id) bug then salt lists loading with errors
  Fixed priority bug, when task with low priority can`t go to work while more priority task in outfile parsing process
- Сommon hashlists (by alg_id) not building if results of brute of this alg now parsing
  Fixed results parser bug with wrong work task status then it have no results
 v0.2a:
  Out-files not remove from HDD and DB after parsing
