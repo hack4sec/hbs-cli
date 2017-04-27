@@ -97,6 +97,8 @@ class Database(object):
         curs = self.q(sql, True)
         cols = curs.column_names
         row = curs.fetchone()
+        if curs._have_unread_result():
+            curs.fetchall()
         curs.close()
         if row:
             result = {}
@@ -111,6 +113,8 @@ class Database(object):
         """ Fetch first value of sql query from first row """
         curs = self.q(sql, True)
         row = curs.fetchone()
+        if curs._have_unread_result():
+            curs.fetchall()
         curs.close()
         if row:
             return row[0]
