@@ -1,3 +1,5 @@
+Team R.I.P. All releases transfered to https://github.com/AntonKuzminRussia
+
 # HashBruteStation 
 Hash Brute Station (HBS) — soft for remote control hash cracking processes on dedicated server. Not for serious big systems (farms), just for simple «home» builds with 1-2 GPUs. HBS contains 2 parts — web and cli. Web-part is graphical interface and control panel. It`s allow create cracking tasks, load hashlists, dicts, etc. Cli-part — work script for start/stop cracking tasks, report work process and parse the results.
 
